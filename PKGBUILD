@@ -2,7 +2,7 @@
 # Based on the original overskride PKGBUILD from kaii
 
 pkgname=btman
-pkgver=0.6.48
+pkgver=0.6.49
 pkgrel=1
 pkgdesc="A minimal GTK4/libadwaita Bluetooth pairing manager for Wayland"
 arch=('x86_64')

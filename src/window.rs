@@ -93,7 +93,17 @@ mod imp {
                 .icon_name("open-menu-symbolic")
                 .tooltip_text("Main Menu")
                 .build();
-            // menu_model will be set from the application
+
+            let menu = gio::Menu::new();
+            let actions_section = gio::Menu::new();
+            actions_section.append(Some("Refresh devices"), Some("win.refresh-devices"));
+            actions_section.append(Some("About"), Some("app.about"));
+            menu.append_section(None, &actions_section);
+            let quit_section = gio::Menu::new();
+            quit_section.append(Some("Quit"), Some("app.quit"));
+            menu.append_section(None, &quit_section);
+            menu_button.set_menu_model(Some(&menu));
+
             header_bar.pack_end(&menu_button);
             toolbar_view.add_top_bar(&header_bar);
 
