@@ -1,13 +1,13 @@
 # Skill: auto-commit
 
-Auto-commits and pushes changes after source modifications in overskride.
+Auto-commits and pushes changes after source modifications.
 
 ## Usage
 Trigger AFTER file edits to automatically commit and push.
 
 ## Implementation
 ```bash
-/home/antrax/Dev/overskride/.opencode/skill/auto-commit/auto-commit.sh
+/home/antrax/.config/opencode/skills/auto-commit/auto-commit.sh
 ```
 
 ## Features
