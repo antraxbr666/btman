@@ -54,7 +54,7 @@ impl PairedDeviceRow {
     pub fn new(name: &str, address: bluer::Address, sender: Sender<Message>, connected: bool) -> Self {
         let obj: PairedDeviceRow = Object::builder().build();
         obj.set_title(name);
-        obj.set_subtitle("Not in range");
+        obj.set_subtitle("");
 
         let button = gtk::Button::new();
         button.add_css_class("suggested-action");
@@ -113,9 +113,15 @@ impl PairedDeviceRow {
     fn update_subtitle(&self) {
         let rssi = *self.imp().rssi.borrow();
         let battery = *self.imp().battery.borrow();
-        let mut text = format!("Signal: {}%", rssi_to_percent(rssi));
+        let mut text = String::new();
+        if rssi != 0 {
+            text.push_str(&format!("Signal: {}%", rssi_to_percent(rssi)));
+        }
         if battery >= 0 {
-            text.push_str(&format!(" · Battery: {}%", battery));
+            if !text.is_empty() {
+                text.push_str(" · ");
+            }
+            text.push_str(&format!("Battery: {}%", battery));
         }
         self.set_subtitle(&text);
     }
