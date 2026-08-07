@@ -177,7 +177,7 @@ mod imp {
             toolbar_view.set_content(Some(&main_box));
             toast_overlay.set_child(Some(&toolbar_view));
 
-            self.obj().set_child(Some(&toast_overlay));
+            self.obj().set_content(Some(&toast_overlay));
 
             // Store references
             *self.main_listbox.borrow_mut() = Some(main_listbox);

@@ -8,6 +8,7 @@ mod imp {
     use super::*;
     use std::cell::RefCell;
     use gtk::prelude::*;
+    use adw::prelude::*;
 
     #[derive(Default)]
     pub struct StartupErrorMessage {
@@ -121,7 +122,7 @@ mod imp {
             toolbar_view.set_content(Some(&content));
             toast_overlay.set_child(Some(&toolbar_view));
 
-            self.obj().set_child(Some(&toast_overlay));
+            self.obj().set_content(Some(&toast_overlay));
 
             *self.error_toast_overlay.borrow_mut() = Some(toast_overlay);
             *self.run_enable_bluetooth_button.borrow_mut() = Some(run_button);
