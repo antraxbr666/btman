@@ -1,0 +1,31 @@
+.operations-list,
+.operations-list > :hover,
+.operations-list > :active {
+    background: none;
+}
+
+/* Battery LevelBar colors */
+levelbar block.full {
+    background-color: #78aeed;
+}
+
+levelbar block.three-quarters {
+    background-color: #3584e4;
+}
+
+levelbar block.half {
+    background-color: #cd9309;
+}
+
+levelbar block.third {
+    background-color: #e5a50a;
+}
+
+levelbar block.low {
+    background-color: #c01c28;
+}
+
+/* Battery LevelBar sizing */
+levelbar {
+    min-width: 120px;
+}

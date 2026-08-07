@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.antraxbr666.Btman</id>
+  
+  <name>btman</name>
+  <summary>A minimal Bluetooth pairing manager for Wayland</summary>
+  
+  <metadata_license>CC-BY-4.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <content_rating type="oars-1.1" />
+  
+  <recommends>
+    <display_length compare="ge">310</display_length>
+  </recommends>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+    <control>tablet</control>
+  </supports>
+  
+  <description>
+    <p>
+      A minimal GTK4/libadwaita Bluetooth pairing manager for Wayland.
+      Originally forked from overskride (https://github.com/kaii-lb/overskride),
+      then scoped down to device pairing/management only.
+    </p>
+    <p>
+      Features: pair/unpair devices, battery level display, powered/discoverable toggles.
+    </p>
+  </description>
+
+  <releases>
+    <release version="0.6.5" date="2025-11-23" type="stable">
+      <description>
+        <p>Update to latest GTK and LibAdwaita</p>
+      </description>
+  
+      <url>https://github.com/antraxbr666/overskride/releases/tag/v0.6.5</url>
+    </release>
+  </releases>
+  
+  <launchable type="desktop-id">io.github.antraxbr666.Btman.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/antraxbr666/overskride/main/assets/images/overskride.png</image>
+      <caption>multi-window screenshot of app</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/antraxbr666/overskride/main/assets/images/center.png</image>
+      <caption>main screen of app</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/antraxbr666/overskride/main/assets/images/left.png</image>
+      <caption>minimized form of connected device</caption>
+    </screenshot>
+  </screenshots>
+</component>

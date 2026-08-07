@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+
+Name=btman
+Comment=A minimal Bluetooth pairing manager for Wayland
+Categories=Utility;
+Keywords=blue;bluetooth;pair;wayland;
+
+Icon=io.github.antraxbr666.Btman
+Terminal=false
+Exec=btman
+StartupNotify=true

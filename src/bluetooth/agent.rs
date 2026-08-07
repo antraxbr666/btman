@@ -1,0 +1,196 @@
+use async_channel::Sender;
+use futures::FutureExt;
+
+use crate::message::Message;
+use crate::window::BTMAN_PROPS;
+
+async fn request_pin_code(request: bluer::agent::RequestPinCode, sender: Sender<Message>) -> bluer::agent::ReqResult<String> {
+    println!("request pincode incoming");
+	let address = request.device;
+
+    sender.send(Message::RequestPinCode(request)).await.expect("cannot send message");
+
+    BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
+    
+    wait_for_dialog_exit().await;
+
+    let final_pin_code = BTMAN_PROPS.lock().unwrap().pin_code.clone();
+
+    println!("pin code is: {:?}", final_pin_code);
+    if final_pin_code.is_empty() {
+      	Err(bluer::agent::ReqError::Rejected)
+    }
+    else {
+        sender.send(Message::SwitchActive(true, address, true)).await.expect("cannot send message");
+	    Ok(final_pin_code)
+    }
+}
+
+async fn display_pin_code(request: bluer::agent::DisplayPinCode, sender: Sender<Message>) -> bluer::agent::ReqResult<()> {
+    println!("display pincode incoming");
+
+    sender.send(Message::DisplayPinCode(request)).await.expect("cannot send message");
+
+    BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
+
+    wait_for_dialog_exit().await;
+
+    println!("displaying pin code finished");
+    Ok(())
+}
+
+async fn request_pass_key(request: bluer::agent::RequestPasskey, sender: Sender<Message>) -> bluer::agent::ReqResult<u32> {
+    println!("request passkey incoming");
+	let address = request.device;
+
+    sender.send(Message::RequestPassKey(request)).await.expect("cannot send message");
+
+    BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
+
+    wait_for_dialog_exit().await;
+
+    let pass_key = BTMAN_PROPS.lock().unwrap().pass_key.clone();
+    println!("pass key is: {}", pass_key);
+    if pass_key == 0 {
+    	Err(bluer::agent::ReqError::Rejected)
+    }
+    else {
+        sender.send(Message::SwitchActive(true, address, true)).await.expect("cannot send message");
+    	Ok(pass_key)
+    }
+}   
+
+async fn display_pass_key(request: bluer::agent::DisplayPasskey, sender: Sender<Message>) -> bluer::agent::ReqResult<()> {
+    println!("display passkey incoming");
+    
+    sender.send(Message::DisplayPassKey(request)).await.expect("cannot send message");
+
+    BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
+
+    wait_for_dialog_exit().await;
+
+    Ok(())
+}
+
+async fn request_confirmation(request: bluer::agent::RequestConfirmation, _: bluer::Session, _: bool, sender: Sender<Message>) -> bluer::agent::ReqResult<()> {
+    println!("pairing confirmation incoming");
+	let address = request.device;
+    
+    sender.send(Message::RequestConfirmation(request)).await.expect("cannot send message");
+
+    BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
+
+    wait_for_dialog_exit().await;
+    
+    let confirmed = BTMAN_PROPS.lock().unwrap().confirm_authorization;
+
+    if confirmed {
+        println!("allowed pairing with device");
+        sender.send(Message::SwitchActive(true, address, true)).await.expect("cannot send message");
+        Ok(())
+    }
+    else {
+        println!("rejected pairing with device");
+        Err(bluer::agent::ReqError::Rejected)
+    }
+}
+
+async fn request_authorization(request: bluer::agent::RequestAuthorization, _: bluer::Session, _: bool, sender: Sender<Message>) -> bluer::agent::ReqResult<()> {
+    println!("pairing authorization incoming");
+	let address = request.device;
+
+    sender.send(Message::RequestAuthorization(request)).await.expect("cannot send message");
+
+    BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
+
+    wait_for_dialog_exit().await;
+
+    let confirmed = BTMAN_PROPS.lock().unwrap().confirm_authorization;
+    if confirmed {
+        println!("allowed pairing with device");
+        sender.send(Message::SwitchActive(true, address, true)).await.expect("cannot send message");
+        Ok(())
+    }
+    else {
+        println!("rejected pairing with device");
+        Err(bluer::agent::ReqError::Rejected)
+    }
+
+}
+
+async fn authorize_service(request: bluer::agent::AuthorizeService, sender: Sender<Message>) -> bluer::agent::ReqResult<()> {
+    println!("service authorization incoming");
+	let address = request.device;
+
+    sender.send(Message::AuthorizeService(request)).await.expect("cannot send message");
+
+    BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
+
+    wait_for_dialog_exit().await;
+
+    let confirmed = BTMAN_PROPS.lock().unwrap().confirm_authorization;
+
+    if confirmed {
+        println!("allowed pairing with device");
+        sender.send(Message::SwitchActive(true, address, true)).await.expect("cannot send message");
+        Ok(())
+    }
+    else {
+        println!("rejected pairing with device");
+        Err(bluer::agent::ReqError::Rejected)
+    }
+}
+
+pub async fn register_agent(session: &bluer::Session, request_default: bool, set_trust: bool, sender_to_be_sent: Sender<Message>) -> bluer::Result<bluer::agent::AgentHandle> {
+    let session1 = session.clone();
+    let session2 = session.clone();
+
+    // IDK if this is the best way, but it's a way.
+    let sender1 = sender_to_be_sent.clone();
+    let sender2 = sender_to_be_sent.clone();
+    let sender3 = sender_to_be_sent.clone();
+    let sender4 = sender_to_be_sent.clone();
+    let sender5 = sender_to_be_sent.clone();
+    let sender6 = sender_to_be_sent.clone();
+    let sender7 = sender_to_be_sent.clone();
+
+    let agent = bluer::agent::Agent {
+        request_default,
+        request_pin_code: Some(Box::new(move |req| request_pin_code(req, sender1.clone()).boxed())),
+        display_pin_code: Some(Box::new(move |req| display_pin_code(req, sender2.clone()).boxed())),
+        request_passkey: Some(Box::new(move |req| request_pass_key(req, sender3.clone()).boxed())),
+        display_passkey: Some(Box::new(move |req| display_pass_key(req, sender4.clone()).boxed())),
+        request_confirmation: Some(Box::new(move |req| {
+            request_confirmation(req, session1.clone(), set_trust, sender5.clone()).boxed()
+        })),
+        request_authorization: Some(Box::new(move |req| {
+            request_authorization(req, session2.clone(), set_trust, sender6.clone()).boxed()
+        })),
+        authorize_service: Some(Box::new(move |req| authorize_service(req, sender7.clone()).boxed())),
+        ..Default::default()
+    };
+
+    let handle = session.register_agent(agent).await.expect("unable to register agent, fuck-");
+
+    Ok(handle)
+}
+
+pub async fn wait_for_dialog_exit() {
+        loop {
+            if !BTMAN_PROPS.lock().unwrap().displaying_dialog {
+				tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                break;
+            }
+        }
+    }
+
+#[tokio::main]
+pub async fn register_bluetooth_agent(sender: Sender<Message>) -> bluer::Result<()> {
+	let session = bluer::Session::new().await?;
+	let agent = register_agent(&session, true, false, sender.clone()).await?;	
+   	println!("registered agent standalone {:?}", agent);
+
+   	loop {
+   		tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+   	}
+} 
