@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<gresources>
-  <gresource prefix="/io.github.antraxbr666.Btman/">
-    <file preprocess="xml-stripblanks">gtk/window.ui</file>
-    <file preprocess="xml-stripblanks">gtk/device-action-row.ui</file>
-    <file preprocess="xml-stripblanks">gtk/startup-error-message.ui</file>
-    <file>gtk/style.css</file>
-  </gresource>
-</gresources>

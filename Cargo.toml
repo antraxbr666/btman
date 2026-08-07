@@ -1,6 +1,6 @@
 [package]
 name = "btman"
-version = "0.6.23"
+version = "0.6.24"
 edition = "2021"
 authors = ["antraX <antraxbr666@proton.me>", "kaii_lb <imkaiilb@gmail.com> (original author)"]
 
@@ -9,7 +9,7 @@ adw = { version = "0.8.0", package = "libadwaita", features = ["v1_4"] }
 bluer = { version = "0.17.4", features = ["bluetoothd"] }
 dbus = "0.9.9"
 futures = { version = "0.3.31", features = ["futures-executor"] }
-gtk = { version = "0.10.2", package = "gtk4", features = ["blueprint"] }
+gtk = { version = "0.10.2", package = "gtk4" }
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-util = "0.7.17"
 async-channel = "2.5.0"

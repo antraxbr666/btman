@@ -40,21 +40,13 @@ use gtk::prelude::*;
 use gtk::gdk::Display;
 
 fn main() -> glib::ExitCode {
-    let resources = match std::env::current_exe() {
-        Ok(path) => {
-            let mut resource_path = path;
-            resource_path.pop();
-            resource_path.push("btman.gresource");
-            gio::Resource::load(&resource_path)
-                .expect("Unable to find btman.gresource")
+    // Set GSETTINGS_SCHEMA_DIR for development builds
+    if let Ok(mut path) = std::env::current_exe() {
+        path.pop();
+        if let Some(path_str) = path.to_str() {
+            std::env::set_var("GSETTINGS_SCHEMA_DIR", path_str);
         }
-        Err(err) => {
-            eprintln!("Unable to find the current path: {}", err);
-            return 1.into();
-        }
-    };
-
-    gio::resources_register(&resources);
+    }
 
     let app = BtmanApplication::new("io.github.antraxbr666.Btman", &gio::ApplicationFlags::empty());
 
@@ -67,7 +59,7 @@ fn main() -> glib::ExitCode {
 
 fn load_css() {
     let provider = gtk::CssProvider::new();
-    provider.load_from_resource("/io.github.antraxbr666.Btman/gtk/style.css");
+    provider.load_from_data(include_str!("gtk/style.css"));
 
     gtk::style_context_add_provider_for_display(
         &Display::default().expect("could not connect to a display"),

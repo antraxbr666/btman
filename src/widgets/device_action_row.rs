@@ -1,14 +1,14 @@
 use glib::{Object, Properties};
 use gtk::glib;
-use adw::subclass::prelude::{ActionRowImpl, PreferencesRowImpl};
 use gtk::subclass::prelude::*;
+use adw::subclass::prelude::*;
 use std::cell::RefCell;
 
 mod imp {
     use super::*;
+    use gtk::prelude::*;
 
-    #[derive(Properties, Default, gtk::CompositeTemplate)]
-    #[template(resource = "/io.github.antraxbr666.Btman/gtk/device-action-row.ui")]
+    #[derive(Properties, Default)]
     #[properties(wrapper_type = super::DeviceActionRow)]
     pub struct DeviceActionRow {
         pub address: RefCell<bluer::Address>,
@@ -19,23 +19,20 @@ mod imp {
         const NAME: &'static str = "DeviceActionRow";
         type Type = super::DeviceActionRow;
         type ParentType = adw::ActionRow;
-
-        fn class_init(klass: &mut Self::Class) {
-            klass.bind_template();
-        }
-
-        fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
-            obj.init_template();
-        }
     }
 
     #[glib::derived_properties]
-    impl ObjectImpl for DeviceActionRow {}
+    impl ObjectImpl for DeviceActionRow {
+        fn constructed(&self) {
+            self.parent_constructed();
+            self.obj().set_activatable(true);
+        }
+    }
 
-    impl ActionRowImpl for DeviceActionRow {}
     impl WidgetImpl for DeviceActionRow {}
     impl ListBoxRowImpl for DeviceActionRow {}
     impl PreferencesRowImpl for DeviceActionRow {}
+    impl ActionRowImpl for DeviceActionRow {}
 }
 
 glib::wrapper! {

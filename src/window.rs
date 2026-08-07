@@ -21,7 +21,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::gio::Settings;
 use gtk::glib::clone;
-use gtk::{gio, glib, Accessible, Buildable, ConstraintTarget, Grid, Native, Root, ShortcutManager, Widget, Window};
+use gtk::{gio, glib};
 
 use crate::agent::register_bluetooth_agent;
 use crate::application::BtmanApplication;
@@ -31,7 +31,6 @@ use crate::startup_error_message::StartupErrorMessage;
 use crate::{bluetooth_settings, device};
 use crate::singletons::BtmanProperties;
 
-use adw::glib::wrapper;
 use async_channel::Sender;
 use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
@@ -50,23 +49,15 @@ lazy_static! {
 mod imp {
     use super::*;
 
-    #[derive(Debug, Default, gtk::CompositeTemplate)]
-    #[template(resource = "/io.github.antraxbr666.Btman/gtk/window.ui")]
+    #[derive(Debug, Default)]
     pub struct BtmanWindow {
-        #[template_child]
-        pub main_listbox: TemplateChild<gtk::ListBox>,
-        #[template_child]
-        pub powered_switch_row: TemplateChild<adw::SwitchRow>,
-        #[template_child]
-        pub discoverable_switch_row: TemplateChild<adw::SwitchRow>,
-        #[template_child]
-        pub toast_overlay: TemplateChild<adw::ToastOverlay>,
-        #[template_child]
-        pub listbox_image_box: TemplateChild<gtk::Box>,
-        #[template_child]
-        pub window_title: TemplateChild<adw::WindowTitle>,
-        #[template_child]
-        pub bluetooth_group: TemplateChild<adw::PreferencesGroup>,
+        pub main_listbox: RefCell<Option<gtk::ListBox>>,
+        pub powered_switch_row: RefCell<Option<adw::SwitchRow>>,
+        pub discoverable_switch_row: RefCell<Option<adw::SwitchRow>>,
+        pub toast_overlay: RefCell<Option<adw::ToastOverlay>>,
+        pub listbox_image_box: RefCell<Option<gtk::Box>>,
+        pub window_title: RefCell<Option<adw::WindowTitle>>,
+        pub bluetooth_group: RefCell<Option<adw::PreferencesGroup>>,
 
         pub battery_level_indicator: RefCell<Option<crate::battery_indicator::BatteryLevelIndicator>>,
         pub settings: OnceCell<Settings>,
@@ -78,24 +69,132 @@ mod imp {
         const NAME: &'static str = "BtmanWindow";
         type Type = super::BtmanWindow;
         type ParentType = adw::ApplicationWindow;
-
-        fn class_init(klass: &mut Self::Class) {
-            klass.bind_template();
-        }
-
-        fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
-            obj.init_template();
-        }
     }
 
     impl ObjectImpl for BtmanWindow {
         fn constructed(&self) {
             self.parent_constructed();
+
+            // Build UI
+            let toast_overlay = adw::ToastOverlay::new();
+            let toolbar_view = adw::ToolbarView::new();
+
+            let header_bar = adw::HeaderBar::new();
+            let window_title = adw::WindowTitle::new("btman", "Bluetooth Manager");
+            window_title.set_halign(gtk::Align::Center);
+            header_bar.set_title_widget(Some(&window_title));
+
+            let menu_button = gtk::MenuButton::builder()
+                .icon_name("open-menu-symbolic")
+                .tooltip_text("Main Menu")
+                .build();
+            // menu_model will be set from the application
+            header_bar.pack_end(&menu_button);
+            toolbar_view.add_top_bar(&header_bar);
+
+            let main_box = gtk::Box::new(gtk::Orientation::Vertical, 12);
+            main_box.set_halign(gtk::Align::Fill);
+            main_box.set_valign(gtk::Align::Fill);
+            main_box.set_margin_start(12);
+            main_box.set_margin_end(12);
+            main_box.set_margin_top(6);
+            main_box.set_margin_bottom(12);
+
+            // Bluetooth group
+            let bluetooth_group = adw::PreferencesGroup::builder()
+                .title("Bluetooth")
+                .description("Adapter status")
+                .build();
+
+            let powered_switch_row = adw::SwitchRow::builder()
+                .title("Enabled")
+                .build();
+            bluetooth_group.add(&powered_switch_row);
+
+            let discoverable_switch_row = adw::SwitchRow::builder()
+                .title("Discoverable")
+                .subtitle("Visible to other devices")
+                .build();
+            bluetooth_group.add(&discoverable_switch_row);
+
+            main_box.append(&bluetooth_group);
+
+            // Devices group
+            let devices_group = adw::PreferencesGroup::builder()
+                .title("Devices")
+                .description("All devices in range")
+                .build();
+
+            // Empty state image
+            let listbox_image_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+            listbox_image_box.set_visible(true);
+            listbox_image_box.set_vexpand(true);
+            listbox_image_box.set_valign(gtk::Align::Center);
+            listbox_image_box.set_halign(gtk::Align::Center);
+
+            let empty_box = gtk::Box::new(gtk::Orientation::Vertical, 12);
+            empty_box.set_valign(gtk::Align::Center);
+            empty_box.set_halign(gtk::Align::Center);
+
+            let empty_icon = gtk::Image::from_icon_name("bluetooth-disabled-symbolic");
+            empty_icon.set_pixel_size(48);
+            empty_icon.set_opacity(0.35);
+            empty_box.append(&empty_icon);
+
+            let empty_label = gtk::Label::new(Some("No devices in range"));
+            empty_label.set_opacity(0.4);
+            empty_label.set_wrap(true);
+            empty_label.set_justify(gtk::Justification::Center);
+            empty_box.append(&empty_label);
+
+            listbox_image_box.append(&empty_box);
+            devices_group.add(&listbox_image_box);
+
+            // Device list
+            let scrolled = gtk::ScrolledWindow::builder()
+                .propagate_natural_height(true)
+                .kinetic_scrolling(true)
+                .overlay_scrolling(true)
+                .build();
+            scrolled.add_css_class("flat");
+
+            let main_listbox = gtk::ListBox::builder()
+                .margin_top(6)
+                .margin_bottom(6)
+                .margin_start(6)
+                .margin_end(6)
+                .valign(gtk::Align::Fill)
+                .visible(false)
+                .build();
+            main_listbox.add_css_class("boxed-list");
+            main_listbox.add_css_class("separators");
+
+            scrolled.set_child(Some(&main_listbox));
+            devices_group.add(&scrolled);
+
+            main_box.append(&devices_group);
+
+            toolbar_view.set_content(Some(&main_box));
+            toast_overlay.set_child(Some(&toolbar_view));
+
+            self.obj().set_child(Some(&toast_overlay));
+
+            // Store references
+            *self.main_listbox.borrow_mut() = Some(main_listbox);
+            *self.powered_switch_row.borrow_mut() = Some(powered_switch_row);
+            *self.discoverable_switch_row.borrow_mut() = Some(discoverable_switch_row);
+            *self.toast_overlay.borrow_mut() = Some(toast_overlay);
+            *self.listbox_image_box.borrow_mut() = Some(listbox_image_box);
+            *self.window_title.borrow_mut() = Some(window_title);
+            *self.bluetooth_group.borrow_mut() = Some(bluetooth_group);
+
+            // Setup settings
             let obj = self.obj();
             obj.setup_settings();
             obj.preload_settings();
         }
     }
+
     impl WidgetImpl for BtmanWindow {}
 
     impl WindowImpl for BtmanWindow {
@@ -108,10 +207,10 @@ mod imp {
     impl AdwApplicationWindowImpl for BtmanWindow {}
 }
 
-wrapper! {
+glib::wrapper! {
     pub struct BtmanWindow(ObjectSubclass<imp::BtmanWindow>)
-        @extends Widget, adw::ApplicationWindow, BtmanApplication,
-        @implements gio::ActionGroup, gio::ActionMap, Accessible, Buildable, ConstraintTarget, Native, Root, ShortcutManager, gtk::ApplicationWindow, Grid, Window;
+        @extends gtk::Widget, adw::ApplicationWindow, BtmanApplication,
+        @implements gio::ActionGroup, gio::ActionMap, gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Native, gtk::Root, gtk::ShortcutManager, gtk::ApplicationWindow, gtk::Grid, gtk::Window;
 }
 
 pub fn runtime() -> &'static Runtime {
@@ -153,7 +252,7 @@ impl BtmanWindow {
             message.set_modal(true);
 
             message.connect_destroy(move |_| {
-                WidgetExt::activate_action(&clone, "app.quit", None)
+                gtk::prelude::WidgetExt::activate_action(&clone, "app.quit", None)
                     .expect("cannot exit app on message close");
             });
 
@@ -163,7 +262,7 @@ impl BtmanWindow {
 
         // Create battery level indicator and add it to the Bluetooth group
         let battery = crate::battery_indicator::BatteryLevelIndicator::new();
-        self.imp().bluetooth_group.add(&battery);
+        self.imp().bluetooth_group.borrow().as_ref().unwrap().add(&battery);
         *self.imp().battery_level_indicator.borrow_mut() = Some(battery);
 
         let self_clone = self.clone();
@@ -175,7 +274,8 @@ impl BtmanWindow {
                 match msg {
                     Message::SwitchActive(_active, address, is_current) => {
                         let _ = is_current;
-                        let listbox = clone.imp().main_listbox.get();
+                        let listbox = clone.imp().main_listbox.borrow();
+                        let listbox = listbox.as_ref().unwrap();
                         let mut listbox_index = 0;
 
                         while let Some(row) = listbox.row_at_index(listbox_index) {
@@ -195,13 +295,15 @@ impl BtmanWindow {
                         let row = add_child_row(device);
 
                         if let Ok(ok_row) = row {
-                            let main_listbox = clone.imp().main_listbox.get();
+                            let main_listbox = clone.imp().main_listbox.borrow();
+                            let main_listbox = main_listbox.as_ref().unwrap();
                             main_listbox.append(&ok_row);
                             main_listbox.invalidate_sort();
                         }
                     }
                     Message::RemoveDevice(name, address) => {
-                        let listbox = clone.imp().main_listbox.get();
+                        let listbox = clone.imp().main_listbox.borrow();
+                        let listbox = listbox.as_ref().unwrap();
                         let mut index = 0;
 
                         while let Some(row) = listbox.row_at_index(index) {
@@ -216,15 +318,18 @@ impl BtmanWindow {
                         listbox.invalidate_sort();
                     }
                     Message::SwitchAdapterPowered(powered) => {
-                        let powered_switch_row = clone.imp().powered_switch_row.get();
+                        let powered_switch_row = clone.imp().powered_switch_row.borrow();
+                        let powered_switch_row = powered_switch_row.as_ref().unwrap();
                         powered_switch_row.set_active(powered);
                     }
                     Message::SwitchAdapterDiscoverable(discoverable) => {
-                        let discoverable_switch_row = clone.imp().discoverable_switch_row.get();
+                        let discoverable_switch_row = clone.imp().discoverable_switch_row.borrow();
+                        let discoverable_switch_row = discoverable_switch_row.as_ref().unwrap();
                         discoverable_switch_row.set_active(discoverable);
                     }
                     Message::PopupError(string, priority) => {
-                        let toast_overlay = clone.imp().toast_overlay.get();
+                        let toast_overlay = clone.imp().toast_overlay.borrow();
+                        let toast_overlay = toast_overlay.as_ref().unwrap();
                         let toast = adw::Toast::new("");
 
                         toast.set_priority(priority);
@@ -311,8 +416,10 @@ impl BtmanWindow {
                         toast_overlay.add_toast(toast);
                     }
                     Message::UpdateListBoxImage() => {
-                        let listbox_image_box = clone.imp().listbox_image_box.get();
-                        let main_listbox = clone.imp().main_listbox.get();
+                        let listbox_image_box = clone.imp().listbox_image_box.borrow();
+                        let listbox_image_box = listbox_image_box.as_ref().unwrap();
+                        let main_listbox = clone.imp().main_listbox.borrow();
+                        let main_listbox = main_listbox.as_ref().unwrap();
 
                         let exists = main_listbox.row_at_index(0).is_some();
 
@@ -637,11 +744,12 @@ impl BtmanWindow {
                         });
                     }
                     Message::InvalidateSort() => {
-                        let main_listbox = clone.imp().main_listbox.get();
+                        let main_listbox = clone.imp().main_listbox.borrow();
+                        let main_listbox = main_listbox.as_ref().unwrap();
                         main_listbox.invalidate_sort();
                     }
                     Message::RefreshDevicesList() => {
-                        WidgetExt::activate_action(&clone, "win.refresh-devices", None).expect("cannot refresh devices list");
+                        gtk::prelude::WidgetExt::activate_action(&clone, "win.refresh-devices", None).expect("cannot refresh devices list");
                     }
                     Message::UpdateBatteryLevel(level) => {
                         if let Some(battery_level_indicator) = clone.imp().battery_level_indicator.borrow().as_ref() {
@@ -652,7 +760,8 @@ impl BtmanWindow {
             }
         });
 
-        let main_listbox = self.imp().main_listbox.get();
+        let main_listbox = self.imp().main_listbox.borrow();
+        let main_listbox = main_listbox.as_ref().unwrap();
 
         main_listbox.set_sort_func(|row_one, row_two| {
             let actionrow_one = row_one.clone().downcast::<DeviceActionRow>().unwrap();
@@ -725,7 +834,8 @@ impl BtmanWindow {
         refresh_action.activate(None);
 
         // powered switch
-        let powered_switch_row = self.imp().powered_switch_row.get();
+        let powered_switch_row = self.imp().powered_switch_row.borrow();
+        let powered_switch_row = powered_switch_row.as_ref().unwrap();
         let sender5 = sender.clone();
         powered_switch_row.connect_activated(move |_| {
             let sender_clone = sender5.clone();
@@ -757,7 +867,8 @@ impl BtmanWindow {
         });
 
         // discoverable switch
-        let discoverable_switch_row = self.imp().discoverable_switch_row.get();
+        let discoverable_switch_row = self.imp().discoverable_switch_row.borrow();
+        let discoverable_switch_row = discoverable_switch_row.as_ref().unwrap();
         let sender6 = sender.clone();
         discoverable_switch_row.connect_activated(move |_| {
             let sender_clone = sender6.clone();
