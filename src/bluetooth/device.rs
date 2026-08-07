@@ -106,7 +106,11 @@ pub async fn get_paired_devices(sender: Sender<Message>, adapter_name: String) -
     for addr in addresses {
         if let Ok(device) = adapter.device(addr) {
             if let Ok(true) = device.is_paired().await {
-                sender.send(Message::AddPairedRow(device)).await.expect("cannot send message");
+                let name = device
+                    .alias()
+                    .await
+                    .unwrap_or_else(|_| "Unknown Device".to_string());
+                sender.send(Message::AddPairedRow(name, addr)).await.expect("cannot send message");
             }
         }
     }
@@ -148,7 +152,11 @@ pub async fn get_devices_continuous(sender: Sender<Message>, adapter_name: Strin
                                 if let Ok(added_device) = supposed_device {
                                     if let Ok(paired) = added_device.is_paired().await {
                                         if paired {
-                                            sender.send(Message::AddPairedRow(added_device)).await.expect("cannot send message {}");
+                                            let name = added_device
+                                                .alias()
+                                                .await
+                                                .unwrap_or_else(|_| "Unknown Device".to_string());
+                                            sender.send(Message::AddPairedRow(name, addr)).await.expect("cannot send message {}");
                                         } else {
                                             sender.send(Message::AddRow(added_device)).await.expect("cannot send message {}");
                                         }

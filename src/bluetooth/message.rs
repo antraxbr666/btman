@@ -10,8 +10,8 @@ pub enum Message {
     RemoveDevice(String, bluer::Address),
     /// Adds a new device from the properties of [device](bluer::Device)
     AddRow(bluer::Device),
-    /// Adds a new paired device from the properties of [device](bluer::Device)
-    AddPairedRow(bluer::Device),
+    /// Adds a new paired device with already-resolved name and address
+    AddPairedRow(String, bluer::Address),
     /// Changes the adapter's powered state to `bool`
     SwitchAdapterPowered(bool),
     /// Changes the adapter's discoverable state to `bool`

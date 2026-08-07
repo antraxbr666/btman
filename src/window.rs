@@ -376,11 +376,10 @@ impl BtmanWindow {
                             main_listbox.invalidate_sort();
                         }
                     }
-                    Message::AddPairedRow(device) => {
+                    Message::AddPairedRow(name, address) => {
                         let paired_listbox = clone.imp().paired_listbox.borrow();
                         let paired_listbox = paired_listbox.as_ref().unwrap();
 
-                        let address = device.address();
                         let mut exists = false;
                         let mut index = 0;
                         while let Some(row) = paired_listbox.row_at_index(index) {
@@ -395,9 +394,8 @@ impl BtmanWindow {
                         }
 
                         if !exists {
-                            if let Ok(ok_row) = add_paired_row(device) {
-                                paired_listbox.append(&ok_row);
-                            }
+                            let ok_row = add_paired_row(&name, address);
+                            paired_listbox.append(&ok_row);
                         }
                     }
                     Message::RemoveDevice(name, address) => {
@@ -1100,9 +1098,9 @@ impl BtmanWindow {
         });
 
         let adapter_name = BTMAN_PROPS.lock().unwrap().current_adapter.clone();
-        if let Err(err) = device::get_paired_devices(sender.clone(), adapter_name).await {
-            println!("error loading paired devices: {err}");
-        }
+        runtime().spawn(async move {
+            let _ = device::get_paired_devices(sender.clone(), adapter_name).await;
+        });
 
         Ok(())
     }
@@ -1164,20 +1162,16 @@ async fn add_child_row(device: bluer::Device) -> bluer::Result<DeviceActionRow> 
     Ok(child_row)
 }
 
-/// Creates a new PairedDeviceRow from a device
-#[tokio::main]
-async fn add_paired_row(device: bluer::Device) -> bluer::Result<PairedDeviceRow> {
-    let mut name = device.alias().await?;
-    let address = device.address();
+/// Creates a new PairedDeviceRow from an already-resolved name and address
+fn add_paired_row(name: &str, address: bluer::Address) -> PairedDeviceRow {
+    let mut name = name.to_string();
 
     if let Ok(_bad_title) = bluer::Address::from_str(name.clone().replace('-', ":").as_str()) {
         name = "Unknown Device".to_string();
     }
 
     let sender = BTMAN_PROPS.lock().unwrap().sender.clone().unwrap();
-
-    let row = PairedDeviceRow::new(&name, address, sender);
-    Ok(row)
+    PairedDeviceRow::new(&name, address, sender)
 }
 
 /// Removes every device from the in-range and paired listboxes and restores
