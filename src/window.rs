@@ -174,6 +174,7 @@ mod imp {
                 .build();
             main_listbox.add_css_class("boxed-list");
             main_listbox.add_css_class("separators");
+            main_listbox.set_selection_mode(gtk::SelectionMode::None);
 
             scrolled.set_child(Some(&main_listbox));
             devices_group.add(&scrolled);
@@ -228,6 +229,7 @@ mod imp {
                 .build();
             paired_listbox.add_css_class("boxed-list");
             paired_listbox.add_css_class("separators");
+            paired_listbox.set_selection_mode(gtk::SelectionMode::None);
 
             paired_scrolled.set_child(Some(&paired_listbox));
             paired_group.add(&paired_scrolled);
