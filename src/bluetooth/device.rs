@@ -23,33 +23,52 @@ pub async fn set_device_active(address: bluer::Address, sender: Sender<Message>,
 
     sender.send(Message::SwitchActiveSpinner(true, address)).await.expect("cannot set spinner to show.");
 
-    if state {
-        device.disconnect().await?;
-    }
-    else if !device.is_paired().await? {
-        device.pair().await?;
-        device.connect().await?;
-        device.connect().await?;
-    }
-    else {
-        device.connect().await?;
-    }
+    let step_err = |step: &str, e: bluer::Error| bluer::Error {
+        kind: e.kind,
+        message: format!("{step} failed: {}", e.message),
+    };
 
-    let updated_state = device.is_connected().await?;
+    let result: bluer::Result<bool> = async {
+        if state {
+            eprintln!("[set_device_active] disconnecting device");
+            device.disconnect().await.map_err(|e| step_err("disconnect", e))?;
+        } else if !device.is_paired().await? {
+            eprintln!("[set_device_active] pairing device (just works)");
+            device.pair().await.map_err(|e| step_err("pair", e))?;
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+            device.connect().await.map_err(|e| step_err("connect-1", e))?;
+            device.connect().await.map_err(|e| step_err("connect-2", e))?;
+        } else {
+            eprintln!("[set_device_active] connecting to already-paired device");
+            device.connect().await.map_err(|e| step_err("connect-1", e))?;
+            device.connect().await.map_err(|e| step_err("connect-2", e))?;
+        }
+        device.is_connected().await
+    }
+    .await;
 
-    println!("set state {} for device {}\n", updated_state, device.address());
     sender.send(Message::SwitchActiveSpinner(false, address)).await.expect("cannot set spinner to show.");
-    sender.send(Message::SwitchActive(updated_state, address, true)).await.expect("cannot send message");
-    sender.send(Message::InvalidateSort()).await.expect("cannot set device name.");
 
-    let sender_clone = sender.clone();
-    std::thread::spawn(move || {
-        let clone = sender_clone.clone();
-        *cancel_battery_check().lock().unwrap() = true;
-        crate::battery::get_battery_for_device(address_string, adapter_string, clone);
-    });
+    match result {
+        Ok(updated_state) => {
+            println!("set state {} for device {}\n", updated_state, device.address());
+            sender.send(Message::SwitchActive(updated_state, address, true)).await.expect("cannot send message");
+            sender.send(Message::InvalidateSort()).await.expect("cannot set device name.");
 
-    Ok(())
+            let sender_clone = sender.clone();
+            std::thread::spawn(move || {
+                let clone = sender_clone.clone();
+                *cancel_battery_check().lock().unwrap() = true;
+                crate::battery::get_battery_for_device(address_string, adapter_string, clone);
+            });
+            Ok(())
+        }
+        Err(err) => {
+            println!("set_device_active failed: {}", err.message);
+            sender.send(Message::SwitchActive(false, address, true)).await.expect("cannot send message");
+            Err(err)
+        }
+    }
 }
 
 pub async fn remove_device(address: bluer::Address, sender: Sender<Message>, adapter_name: String) -> bluer::Result<()> {

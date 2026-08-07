@@ -187,7 +187,7 @@ pub async fn wait_for_dialog_exit() {
 #[tokio::main]
 pub async fn register_bluetooth_agent(sender: Sender<Message>) -> bluer::Result<()> {
 	let session = bluer::Session::new().await?;
-	let agent = register_agent(&session, true, false, sender.clone()).await?;	
+	let agent = register_agent(&session, true, true, sender.clone()).await?;	
    	println!("registered agent standalone {:?}", agent);
 
    	loop {
