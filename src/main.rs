@@ -41,12 +41,13 @@ use gtk::prelude::*;
 use gtk::gdk::Display;
 
 fn main() -> glib::ExitCode {
-    // Set GSETTINGS_SCHEMA_DIR for development builds (schema compiled next to
-    // the binary by build.rs). For packaged installs the schema lives in the
-    // system dir, so only set it when a compiled schema is actually present.
+    // Set GSETTINGS_SCHEMA_DIR for development builds (glib-compile-schemas
+    // outputs `gschemas.compiled` next to the binary via build.rs). For packaged
+    // installs the schema lives in the system dir, so only set it when a
+    // compiled schema is actually present next to the executable.
     if let Ok(mut path) = std::env::current_exe() {
         path.pop();
-        if path.join("io.github.antraxbr666.Btman.gschema.compiled").exists() {
+        if path.join("gschemas.compiled").exists() {
             if let Some(path_str) = path.to_str() {
                 std::env::set_var("GSETTINGS_SCHEMA_DIR", path_str);
             }
