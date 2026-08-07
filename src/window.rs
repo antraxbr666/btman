@@ -178,8 +178,6 @@ mod imp {
             scrolled.set_child(Some(&main_listbox));
             devices_group.add(&scrolled);
 
-            main_box.append(&devices_group);
-
             // Paired Devices group
             let paired_group = adw::PreferencesGroup::builder()
                 .title("Paired Devices")
@@ -234,6 +232,9 @@ mod imp {
             paired_group.add(&paired_scrolled);
 
             main_box.append(&paired_group);
+
+            // Devices group
+            main_box.append(&devices_group);
 
             toolbar_view.set_content(Some(&main_box));
             toast_overlay.set_child(Some(&toolbar_view));
@@ -396,6 +397,11 @@ impl BtmanWindow {
                         if !exists {
                             let ok_row = add_paired_row(&name, address);
                             paired_listbox.append(&ok_row);
+
+                            let paired_image_box = clone.imp().paired_image_box.borrow();
+                            let paired_image_box = paired_image_box.as_ref().unwrap();
+                            paired_image_box.set_visible(false);
+                            paired_listbox.set_visible(true);
                         }
                     }
                     Message::RemoveDevice(name, address) => {
