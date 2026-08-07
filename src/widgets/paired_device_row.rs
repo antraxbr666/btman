@@ -15,6 +15,7 @@ mod imp {
     pub struct PairedDeviceRow {
         pub address: RefCell<bluer::Address>,
         pub connect_button: RefCell<Option<gtk::Button>>,
+        pub forget_button: RefCell<Option<gtk::Button>>,
         pub name_label: RefCell<Option<gtk::Label>>,
         pub spinner: RefCell<Option<gtk::Spinner>>,
         pub connected: RefCell<bool>,
@@ -73,16 +74,24 @@ impl PairedDeviceRow {
         button.set_child(Some(&button_box));
 
         obj.add_suffix(&button);
+
+        let forget_button = gtk::Button::from_icon_name("edit-delete-symbolic");
+        forget_button.add_css_class("flat");
+        forget_button.set_tooltip_text(Some("Forget device"));
+        obj.add_suffix(&forget_button);
+
         obj.set_activatable_widget(Some(&button));
 
         *obj.imp().connect_button.borrow_mut() = Some(button);
         *obj.imp().name_label.borrow_mut() = Some(label);
         *obj.imp().spinner.borrow_mut() = Some(spinner);
+        *obj.imp().forget_button.borrow_mut() = Some(forget_button);
         *obj.imp().address.borrow_mut() = address;
         *obj.imp().sender.borrow_mut() = Some(sender);
         *obj.imp().connected.borrow_mut() = connected;
 
         obj.connect_connect_button();
+        obj.connect_forget_button();
         obj
     }
 
@@ -91,7 +100,7 @@ impl PairedDeviceRow {
     }
 
     pub fn set_rssi(&self, rssi: i32) {
-        self.set_subtitle(&format!("{} dBm", rssi));
+        self.set_subtitle(&format!("Signal: {}%", rssi_to_percent(rssi)));
     }
 
     pub fn set_connected(&self, connected: bool) {
@@ -170,4 +179,43 @@ impl PairedDeviceRow {
             });
         });
     }
+
+    fn connect_forget_button(&self) {
+        let this = self.clone();
+        let forget_button = self
+            .imp()
+            .forget_button
+            .borrow()
+            .as_ref()
+            .unwrap()
+            .clone();
+
+        forget_button.connect_clicked(move |_| {
+            let this = this.clone();
+            let address = this.get_bluer_address();
+            let adapter_name = crate::window::BTMAN_PROPS
+                .lock()
+                .unwrap()
+                .current_adapter
+                .clone();
+            let sender = this.imp().sender.borrow().as_ref().unwrap().clone();
+
+            crate::window::runtime().spawn(async move {
+                if let Err(err) =
+                    crate::device::remove_device(address, sender.clone(), adapter_name).await
+                {
+                    let string = err.message;
+                    sender
+                        .send(Message::PopupError(string, adw::ToastPriority::High))
+                        .await
+                        .expect("cannot send message");
+                }
+            });
+        });
+    }
+}
+
+fn rssi_to_percent(rssi: i32) -> i32 {
+    let rssi = rssi.clamp(-100, -50);
+    (rssi + 100) * 2
 }

@@ -52,7 +52,6 @@ pub async fn set_device_active(address: bluer::Address, sender: Sender<Message>,
     Ok(())
 }
 
-#[allow(dead_code)]
 pub async fn remove_device(address: bluer::Address, sender: Sender<Message>, adapter_name: String) -> bluer::Result<()> {
     let adapter = bluer::Session::new().await?.adapter(adapter_name.as_str())?;
     let device = adapter.device(address)?;
@@ -72,6 +71,9 @@ pub async fn remove_device(address: bluer::Address, sender: Sender<Message>, ada
     if confirmed {
         println!("removing device...");
         let name = device.alias().await?;
+        if device.is_connected().await? {
+            device.disconnect().await?;
+        }
         adapter.remove_device(address).await?;
         {
             let mut lut = devices_lut().lock().unwrap().take().unwrap();

@@ -368,6 +368,19 @@ impl BtmanWindow {
                         }
                     }
                     Message::SwitchRssi(address, rssi) => {
+                        let main_listbox = clone.imp().main_listbox.borrow();
+                        let main_listbox = main_listbox.as_ref().unwrap();
+                        let mut main_index = 0;
+                        while let Some(row) = main_listbox.row_at_index(main_index) {
+                            let action_row = row
+                                .downcast::<DeviceActionRow>()
+                                .expect("cannot downcast to action row.");
+                            if action_row.get_bluer_address() == address {
+                                action_row.set_rssi(rssi);
+                            }
+                            main_index += 1;
+                        }
+
                         let paired_listbox = clone.imp().paired_listbox.borrow();
                         let paired_listbox = paired_listbox.as_ref().unwrap();
                         let mut paired_index = 0;
@@ -433,6 +446,25 @@ impl BtmanWindow {
                         }
 
                         listbox.invalidate_sort();
+
+                        let paired_listbox = clone.imp().paired_listbox.borrow();
+                        let paired_listbox = paired_listbox.as_ref().unwrap();
+                        let mut paired_index = 0;
+                        while let Some(row) = paired_listbox.row_at_index(paired_index) {
+                            let paired_row = row.downcast::<PairedDeviceRow>().expect("cannot downcast to paired row.");
+                            if paired_row.get_bluer_address() == address {
+                                paired_listbox.remove(&paired_row);
+                                break;
+                            }
+                            paired_index += 1;
+                        }
+
+                        if paired_listbox.row_at_index(0).is_none() {
+                            let paired_image_box = clone.imp().paired_image_box.borrow();
+                            let paired_image_box = paired_image_box.as_ref().unwrap();
+                            paired_image_box.set_visible(true);
+                            paired_listbox.set_visible(false);
+                        }
                     }
                     Message::SwitchAdapterPowered(powered) => {
                         let imp = clone.imp();

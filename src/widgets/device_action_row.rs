@@ -2,16 +2,17 @@ use glib::{Object, Properties};
 use gtk::glib;
 use gtk::subclass::prelude::*;
 use adw::subclass::prelude::*;
+use adw::prelude::*;
 use std::cell::RefCell;
 
 mod imp {
     use super::*;
-    use gtk::prelude::*;
 
     #[derive(Properties, Default)]
     #[properties(wrapper_type = super::DeviceActionRow)]
     pub struct DeviceActionRow {
         pub address: RefCell<bluer::Address>,
+        pub rssi: RefCell<i32>,
     }
 
     #[glib::object_subclass]
@@ -54,6 +55,16 @@ impl DeviceActionRow {
     pub fn set_bluer_address(&self, address: bluer::Address) {
         *self.imp().address.borrow_mut() = address;
     }
+
+    pub fn set_rssi(&self, rssi: i32) {
+        *self.imp().rssi.borrow_mut() = rssi;
+        self.set_subtitle(&format!("Signal: {}%", rssi_to_percent(rssi)));
+    }
+}
+
+fn rssi_to_percent(rssi: i32) -> i32 {
+    let rssi = rssi.clamp(-100, -50);
+    (rssi + 100) * 2
 }
 
 impl Default for DeviceActionRow {
