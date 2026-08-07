@@ -1,5 +1,5 @@
 # btman 🚀
-![Version](https://img.shields.io/badge/version-0.6.42-blue)
+![Version](https://img.shields.io/badge/version-0.6.43-blue)
 A minimal GTK4/libadwaita Bluetooth pairing manager for Wayland 💙
 
 Originally forked from [overskride](https://github.com/kaii-lb/overskride), then scoped down to device pairing/management only.
