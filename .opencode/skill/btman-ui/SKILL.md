@@ -64,3 +64,17 @@ Rules:
 Global `OnceLock<Mutex<Props>>` in src/singletons.rs with fields:
 name, current_adapter, sender: Option<Sender<Message>>, address, displaying_dialog,
 pin_code, pass_key, confirm_authorization. Read/write with `lock().unwrap_or_else(|p| p.into_inner())`.
+
+## Versioning & packaging (SAME TAG = SAME VERSION)
+- The `PKGBUILD` builds from `git+ssh://git@github.com/antraxbr666/btman.git#tag=v${pkgver}`.
+  So `pkgver` in the PKGBUILD MUST equal the exact git tag **and** the Cargo.toml version —
+  all three (`Cargo.toml version`, `PKGBUILD pkgver`, git tag `v<version>`) stay in sync.
+- Whenever the version changes, an annotated tag `v<version>` must be created at the bump
+  commit and pushed (`git tag -a v<version> -m "Release v<version>"`, then `git push --tags`).
+- The global auto-commit script
+  (`~/.config/opencode/skills/auto-commit/auto-commit.sh`) does this automatically on every
+  version bump: it increments the Cargo.toml patch, updates the README badge, commits, then
+  creates and pushes the `v<version>` tag. Do NOT manually bump with a bare `git commit` +
+  `git push` that skips the tag, or the PKGBUILD download will fail.
+- On a release you normally only need to bump `pkgver` in PKGBUILD to match the new version
+  and commit; Cargo.toml is already bumped by auto-commit.

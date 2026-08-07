@@ -2,7 +2,7 @@
 # Based on the original overskride PKGBUILD from kaii
 
 pkgname=btman
-pkgver=0.6.42
+pkgver=0.6.45
 pkgrel=1
 pkgdesc="A minimal GTK4/libadwaita Bluetooth pairing manager for Wayland"
 arch=('x86_64')
@@ -10,7 +10,7 @@ url="https://github.com/antraxbr666/btman"
 license=('GPL3')
 depends=('gtk4' 'libadwaita' 'dbus' 'bluez' 'glib2')
 makedepends=('rust' 'cargo' 'pkg-config' 'gcc' 'glib2')
-source=("btman::git+ssh://git@github.com/antraxbr666/btman.git")
+source=("btman::git+ssh://git@github.com/antraxbr666/btman.git#tag=v${pkgver}")
 sha256sums=('SKIP')
 
 build() {
