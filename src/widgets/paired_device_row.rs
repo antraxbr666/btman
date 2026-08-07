@@ -62,6 +62,7 @@ impl PairedDeviceRow {
 
         let label = gtk::Label::new(Some(if connected { "Disconnect" } else { "Connect" }));
         let spinner = gtk::Spinner::new();
+        spinner.start();
         spinner.set_visible(false);
         spinner.set_width_request(16);
         spinner.set_height_request(16);
@@ -110,15 +111,14 @@ impl PairedDeviceRow {
     pub fn set_spinning(&self, spinning: bool) {
         if let Some(spinner) = self.imp().spinner.borrow().as_ref() {
             if spinning {
-                spinner.start();
                 spinner.set_visible(true);
             } else {
                 spinner.stop();
                 spinner.set_visible(false);
             }
         }
-        if let Some(button) = self.imp().connect_button.borrow().as_ref() {
-            button.set_sensitive(!spinning);
+        if let Some(label) = self.imp().name_label.borrow().as_ref() {
+            label.set_visible(!spinning);
         }
     }
 
@@ -133,6 +133,18 @@ impl PairedDeviceRow {
             .clone();
 
         button.connect_clicked(move |_| {
+            let this = this.clone();
+            if this
+                .imp()
+                .spinner
+                .borrow()
+                .as_ref()
+                .map(|s| s.is_visible())
+                .unwrap_or(false)
+            {
+                return;
+            }
+
             let address = this.get_bluer_address();
             let adapter_name = crate::window::BTMAN_PROPS
                 .lock()
