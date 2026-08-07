@@ -5,7 +5,7 @@
 After completing any code changes (file edits, fixes, refactors), ALWAYS run the auto-commit script:
 
 ```bash
-/home/antrax/Dev/overskride/.opencode/skill/auto-commit/auto-commit.sh
+/home/antrax/.config/opencode/skills/auto-commit/auto-commit.sh
 ```
 
 This script:
