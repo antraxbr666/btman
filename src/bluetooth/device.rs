@@ -110,7 +110,8 @@ pub async fn get_paired_devices(sender: Sender<Message>, adapter_name: String) -
                     .alias()
                     .await
                     .unwrap_or_else(|_| "Unknown Device".to_string());
-                sender.send(Message::AddPairedRow(name, addr)).await.expect("cannot send message");
+                let connected = device.is_connected().await.unwrap_or(false);
+                sender.send(Message::AddPairedRow(name, addr, connected)).await.expect("cannot send message");
             }
         }
     }
@@ -156,7 +157,8 @@ pub async fn get_devices_continuous(sender: Sender<Message>, adapter_name: Strin
                                                 .alias()
                                                 .await
                                                 .unwrap_or_else(|_| "Unknown Device".to_string());
-                                            sender.send(Message::AddPairedRow(name, addr)).await.expect("cannot send message {}");
+                                            let connected = added_device.is_connected().await.unwrap_or(false);
+                                            sender.send(Message::AddPairedRow(name, addr, connected)).await.expect("cannot send message {}");
                                         } else {
                                             sender.send(Message::AddRow(added_device)).await.expect("cannot send message {}");
                                         }

@@ -377,7 +377,7 @@ impl BtmanWindow {
                             main_listbox.invalidate_sort();
                         }
                     }
-                    Message::AddPairedRow(name, address) => {
+                    Message::AddPairedRow(name, address, connected) => {
                         let paired_listbox = clone.imp().paired_listbox.borrow();
                         let paired_listbox = paired_listbox.as_ref().unwrap();
 
@@ -395,7 +395,7 @@ impl BtmanWindow {
                         }
 
                         if !exists {
-                            let ok_row = add_paired_row(&name, address);
+                            let ok_row = add_paired_row(&name, address, connected);
                             paired_listbox.append(&ok_row);
 
                             let paired_image_box = clone.imp().paired_image_box.borrow();
@@ -1168,8 +1168,8 @@ async fn add_child_row(device: bluer::Device) -> bluer::Result<DeviceActionRow> 
     Ok(child_row)
 }
 
-/// Creates a new PairedDeviceRow from an already-resolved name and address
-fn add_paired_row(name: &str, address: bluer::Address) -> PairedDeviceRow {
+/// Creates a new PairedDeviceRow from an already-resolved name, address and connected state
+fn add_paired_row(name: &str, address: bluer::Address, connected: bool) -> PairedDeviceRow {
     let mut name = name.to_string();
 
     if let Ok(_bad_title) = bluer::Address::from_str(name.clone().replace('-', ":").as_str()) {
@@ -1177,7 +1177,7 @@ fn add_paired_row(name: &str, address: bluer::Address) -> PairedDeviceRow {
     }
 
     let sender = BTMAN_PROPS.lock().unwrap().sender.clone().unwrap();
-    PairedDeviceRow::new(&name, address, sender)
+    PairedDeviceRow::new(&name, address, sender, connected)
 }
 
 /// Removes every device from the in-range and paired listboxes and restores

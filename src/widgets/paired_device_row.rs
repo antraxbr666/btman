@@ -46,20 +46,24 @@ glib::wrapper! {
 }
 
 impl PairedDeviceRow {
-    pub fn new(name: &str, address: bluer::Address, sender: Sender<Message>) -> Self {
+    pub fn new(name: &str, address: bluer::Address, sender: Sender<Message>, connected: bool) -> Self {
         let obj: PairedDeviceRow = Object::builder().build();
         obj.set_title(name);
         obj.set_subtitle("Not in range");
 
-        let button = gtk::Button::with_label("Connect");
-        button.add_css_class("suggested-action");
+        let button = gtk::Button::with_label(if connected { "Disconnect" } else { "Connect" });
+        if connected {
+            button.remove_css_class("suggested-action");
+        } else {
+            button.add_css_class("suggested-action");
+        }
         obj.add_suffix(&button);
         obj.set_activatable_widget(Some(&button));
 
         *obj.imp().connect_button.borrow_mut() = Some(button);
         *obj.imp().address.borrow_mut() = address;
         *obj.imp().sender.borrow_mut() = Some(sender);
-        *obj.imp().connected.borrow_mut() = false;
+        *obj.imp().connected.borrow_mut() = connected;
 
         obj.connect_connect_button();
         obj
