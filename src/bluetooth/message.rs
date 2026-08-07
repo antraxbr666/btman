@@ -2,8 +2,8 @@
 pub enum Message {
     /// Changes the connected switch's active to `bool` if the `is_current` is true, and sets the corresponding device action row's connected state
     SwitchActive(bool, bluer::Address, bool),
-    /// Changes the connected switch's spinner spinning state to `bool`
-    SwitchActiveSpinner(bool),
+    /// Changes the connected switch's spinner spinning state to `bool` for the device at `bluer::Address`
+    SwitchActiveSpinner(bool, bluer::Address),
     /// Changes the supplied device's RSSI to the supplied value
     SwitchRssi(bluer::Address, i32),
     /// Removes the device matching the supplied name

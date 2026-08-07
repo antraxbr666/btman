@@ -352,7 +352,21 @@ impl BtmanWindow {
                             paired_index += 1;
                         }
                     }
-                    Message::SwitchActiveSpinner(_spinning) => {}
+                    Message::SwitchActiveSpinner(spinning, address) => {
+                        let paired_listbox = clone.imp().paired_listbox.borrow();
+                        let paired_listbox = paired_listbox.as_ref().unwrap();
+                        let mut spinning_index = 0;
+                        while let Some(row) = paired_listbox.row_at_index(spinning_index) {
+                            let action_row = row
+                                .downcast::<PairedDeviceRow>()
+                                .expect("cannot downcast to paired row.");
+                            if action_row.get_bluer_address() == address {
+                                action_row.set_spinning(spinning);
+                                break;
+                            }
+                            spinning_index += 1;
+                        }
+                    }
                     Message::SwitchRssi(address, rssi) => {
                         let paired_listbox = clone.imp().paired_listbox.borrow();
                         let paired_listbox = paired_listbox.as_ref().unwrap();
@@ -1158,6 +1172,9 @@ async fn add_child_row(device: bluer::Device) -> bluer::Result<DeviceActionRow> 
             {
                 let string = err.message;
 
+                sender_clone
+                    .send(Message::SwitchActiveSpinner(false, address))
+                    .await.expect("cannot send message");
                 sender_clone
                     .send(Message::PopupError(string, adw::ToastPriority::High))
                     .await.expect("cannot send message");

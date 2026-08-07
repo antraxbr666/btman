@@ -15,6 +15,8 @@ mod imp {
     pub struct PairedDeviceRow {
         pub address: RefCell<bluer::Address>,
         pub connect_button: RefCell<Option<gtk::Button>>,
+        pub name_label: RefCell<Option<gtk::Label>>,
+        pub spinner: RefCell<Option<gtk::Spinner>>,
         pub connected: RefCell<bool>,
         pub sender: RefCell<Option<Sender<Message>>>,
     }
@@ -51,16 +53,30 @@ impl PairedDeviceRow {
         obj.set_title(name);
         obj.set_subtitle("Not in range");
 
-        let button = gtk::Button::with_label(if connected { "Disconnect" } else { "Connect" });
+        let button = gtk::Button::new();
         if connected {
             button.remove_css_class("suggested-action");
         } else {
             button.add_css_class("suggested-action");
         }
+
+        let label = gtk::Label::new(Some(if connected { "Disconnect" } else { "Connect" }));
+        let spinner = gtk::Spinner::new();
+        spinner.set_visible(false);
+        spinner.set_width_request(16);
+        spinner.set_height_request(16);
+
+        let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        button_box.append(&spinner);
+        button_box.append(&label);
+        button.set_child(Some(&button_box));
+
         obj.add_suffix(&button);
         obj.set_activatable_widget(Some(&button));
 
         *obj.imp().connect_button.borrow_mut() = Some(button);
+        *obj.imp().name_label.borrow_mut() = Some(label);
+        *obj.imp().spinner.borrow_mut() = Some(spinner);
         *obj.imp().address.borrow_mut() = address;
         *obj.imp().sender.borrow_mut() = Some(sender);
         *obj.imp().connected.borrow_mut() = connected;
@@ -79,13 +95,30 @@ impl PairedDeviceRow {
 
     pub fn set_connected(&self, connected: bool) {
         *self.imp().connected.borrow_mut() = connected;
+        if let Some(label) = self.imp().name_label.borrow().as_ref() {
+            label.set_label(if connected { "Disconnect" } else { "Connect" });
+        }
         if let Some(button) = self.imp().connect_button.borrow().as_ref() {
-            button.set_label(if connected { "Disconnect" } else { "Connect" });
             if connected {
                 button.remove_css_class("suggested-action");
             } else {
                 button.add_css_class("suggested-action");
             }
+        }
+    }
+
+    pub fn set_spinning(&self, spinning: bool) {
+        if let Some(spinner) = self.imp().spinner.borrow().as_ref() {
+            if spinning {
+                spinner.start();
+                spinner.set_visible(true);
+            } else {
+                spinner.stop();
+                spinner.set_visible(false);
+            }
+        }
+        if let Some(button) = self.imp().connect_button.borrow().as_ref() {
+            button.set_sensitive(!spinning);
         }
     }
 
@@ -113,6 +146,10 @@ impl PairedDeviceRow {
                     crate::device::set_device_active(address, sender.clone(), adapter_name).await
                 {
                     let string = err.message;
+                    sender
+                        .send(Message::SwitchActiveSpinner(false, address))
+                        .await
+                        .expect("cannot send message");
                     sender
                         .send(Message::PopupError(string, adw::ToastPriority::High))
                         .await

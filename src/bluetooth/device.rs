@@ -19,9 +19,9 @@ pub async fn set_device_active(address: bluer::Address, sender: Sender<Message>,
     let adapter = bluer::Session::new().await?.adapter(adapter_name.as_str())?;
     let device = adapter.device(address)?;
 
-    sender.send(Message::SwitchActiveSpinner(true)).await.expect("cannot set spinner to show.");
-
     let state = device.is_connected().await?;
+
+    sender.send(Message::SwitchActiveSpinner(true, address)).await.expect("cannot set spinner to show.");
 
     if state {
         device.disconnect().await?;
@@ -38,7 +38,7 @@ pub async fn set_device_active(address: bluer::Address, sender: Sender<Message>,
     let updated_state = device.is_connected().await?;
 
     println!("set state {} for device {}\n", updated_state, device.address());
-    sender.send(Message::SwitchActiveSpinner(false)).await.expect("cannot set spinner to show.");
+    sender.send(Message::SwitchActiveSpinner(false, address)).await.expect("cannot set spinner to show.");
     sender.send(Message::SwitchActive(updated_state, address, true)).await.expect("cannot send message");
     sender.send(Message::InvalidateSort()).await.expect("cannot set device name.");
 
