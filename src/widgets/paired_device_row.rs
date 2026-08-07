@@ -57,11 +57,7 @@ impl PairedDeviceRow {
         obj.set_subtitle("Not in range");
 
         let button = gtk::Button::new();
-        if connected {
-            button.remove_css_class("suggested-action");
-        } else {
-            button.add_css_class("suggested-action");
-        }
+        button.add_css_class("suggested-action");
 
         let label = gtk::Label::new(Some(if connected { "Disconnect" } else { "Connect" }));
         let spinner = gtk::Spinner::new();
@@ -80,6 +76,7 @@ impl PairedDeviceRow {
         let forget_label = gtk::Label::new(Some("Forget"));
         let forget_button = gtk::Button::new();
         forget_button.set_child(Some(&forget_label));
+        forget_button.add_css_class("suggested-action");
         obj.add_suffix(&forget_button);
 
         obj.set_activatable_widget(Some(&button));
@@ -129,11 +126,7 @@ impl PairedDeviceRow {
             label.set_label(if connected { "Disconnect" } else { "Connect" });
         }
         if let Some(button) = self.imp().connect_button.borrow().as_ref() {
-            if connected {
-                button.remove_css_class("suggested-action");
-            } else {
-                button.add_css_class("suggested-action");
-            }
+            button.add_css_class("suggested-action");
         }
     }
 

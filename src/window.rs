@@ -439,6 +439,30 @@ impl BtmanWindow {
                             paired_listbox.set_visible(true);
                         }
                     }
+                    Message::RemoveFromRange(address) => {
+                        let listbox = clone.imp().main_listbox.borrow();
+                        let listbox = listbox.as_ref().unwrap();
+                        let mut index = 0;
+
+                        while let Some(row) = listbox.row_at_index(index) {
+                            let action_row = row
+                                .downcast::<DeviceActionRow>()
+                                .expect("cannot downcast to action row.");
+                            if action_row.get_bluer_address() == address {
+                                listbox.remove(&action_row);
+                            }
+                            index += 1;
+                        }
+
+                        listbox.invalidate_sort();
+
+                        if listbox.row_at_index(0).is_none() {
+                            let listbox_image_box = clone.imp().listbox_image_box.borrow();
+                            let listbox_image_box = listbox_image_box.as_ref().unwrap();
+                            listbox_image_box.set_visible(true);
+                            listbox.set_visible(false);
+                        }
+                    }
                     Message::RemoveDevice(name, address) => {
                         let listbox = clone.imp().main_listbox.borrow();
                         let listbox = listbox.as_ref().unwrap();

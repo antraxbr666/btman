@@ -260,7 +260,7 @@ let mut guard = devices_lut().lock().unwrap_or_else(|p| p.into_inner());
                                 .unwrap_or_else(|_| "Unknown Device".to_string());
                             let connected = device.is_connected().await.unwrap_or(false);
                             sender_clone.send(Message::AddPairedRow(name.clone(), addr, connected)).await.expect("cannot send message");
-                            sender_clone.send(Message::RemoveDevice(name, addr)).await.expect("cannot send message");
+                            sender_clone.send(Message::RemoveFromRange(addr)).await.expect("cannot send message");
                             sender_clone.send(Message::UpdateListBoxImage()).await.expect("cannot send message");
                         }
                     },

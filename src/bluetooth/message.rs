@@ -8,6 +8,8 @@ pub enum Message {
     SwitchRssi(bluer::Address, i32),
     /// Removes the device matching the supplied name
     RemoveDevice(String, bluer::Address),
+    /// Removes the device at `bluer::Address` from the in-range Devices list only
+    RemoveFromRange(bluer::Address),
     /// Adds a new device from the properties of [device](bluer::Device)
     AddRow(bluer::Device),
     /// Adds a new paired device with already-resolved name, address and connected state
