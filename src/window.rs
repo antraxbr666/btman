@@ -63,7 +63,6 @@ mod imp {
         pub window_title: RefCell<Option<adw::WindowTitle>>,
         pub bluetooth_group: RefCell<Option<adw::PreferencesGroup>>,
 
-        pub battery_level_indicator: RefCell<Option<crate::battery_indicator::BatteryLevelIndicator>>,
         pub settings: OnceCell<Settings>,
         pub display_pass_key_dialog: RefCell<Option<adw::MessageDialog>>,
         pub powered_sync_guard: Arc<AtomicBool>,
@@ -324,11 +323,6 @@ impl BtmanWindow {
             return;
         }
 
-        // Create battery level indicator and add it to the Bluetooth group
-        let battery = crate::battery_indicator::BatteryLevelIndicator::new();
-        self.imp().bluetooth_group.borrow().as_ref().unwrap().add(&battery);
-        *self.imp().battery_level_indicator.borrow_mut() = Some(battery);
-
         let self_clone = self.clone();
 
         glib::MainContext::default().spawn_local(async move {
@@ -353,6 +347,20 @@ impl BtmanWindow {
                         }
                     }
                     Message::SwitchActiveSpinner(spinning, address) => {
+                        let main_listbox = clone.imp().main_listbox.borrow();
+                        let main_listbox = main_listbox.as_ref().unwrap();
+                        let mut main_index = 0;
+                        while let Some(row) = main_listbox.row_at_index(main_index) {
+                            let action_row = row
+                                .downcast::<DeviceActionRow>()
+                                .expect("cannot downcast to action row.");
+                            if action_row.get_bluer_address() == address {
+                                action_row.set_spinning(spinning);
+                                break;
+                            }
+                            main_index += 1;
+                        }
+
                         let paired_listbox = clone.imp().paired_listbox.borrow();
                         let paired_listbox = paired_listbox.as_ref().unwrap();
                         let mut spinning_index = 0;
@@ -923,9 +931,19 @@ impl BtmanWindow {
                     Message::RefreshDevicesList() => {
                         gtk::prelude::WidgetExt::activate_action(&clone, "win.refresh-devices", None).expect("cannot refresh devices list");
                     }
-                    Message::UpdateBatteryLevel(level) => {
-                        if let Some(battery_level_indicator) = clone.imp().battery_level_indicator.borrow().as_ref() {
-                            battery_level_indicator.set_indicator_battery_level(level);
+                    Message::UpdateBattery(address, level) => {
+                        let paired_listbox = clone.imp().paired_listbox.borrow();
+                        let paired_listbox = paired_listbox.as_ref().unwrap();
+                        let mut battery_index = 0;
+                        while let Some(row) = paired_listbox.row_at_index(battery_index) {
+                            let action_row = row
+                                .downcast::<PairedDeviceRow>()
+                                .expect("cannot downcast to paired row.");
+                            if action_row.get_bluer_address() == address {
+                                action_row.set_battery(level);
+                                break;
+                            }
+                            battery_index += 1;
                         }
                     }
                 }
@@ -1161,7 +1179,8 @@ impl BtmanWindow {
 /// Creates a new DeviceActionRow from a device
 #[tokio::main]
 async fn add_child_row(device: bluer::Device) -> bluer::Result<DeviceActionRow> {
-    let child_row = DeviceActionRow::new();
+    let device_sender = BTMAN_PROPS.lock().unwrap().sender.clone().unwrap();
+    let child_row = DeviceActionRow::new(device_sender.clone());
 
     let mut name = device.alias().await?;
     let address = device.address();
@@ -1175,44 +1194,15 @@ async fn add_child_row(device: bluer::Device) -> bluer::Result<DeviceActionRow> 
         child_row.set_title(name.clone().as_str());
     }
 
-    let props = BTMAN_PROPS.lock().unwrap();
-    child_row.set_activatable(true);
-
     {
         let mut lut = devices_lut().lock().unwrap().take().unwrap();
         lut.insert(address, name.clone());
         *devices_lut().lock().unwrap() = Some(lut);
     }
 
-    let sender = props.sender.clone().unwrap();
-    sender
+    device_sender
         .send(Message::InvalidateSort())
         .await.expect("cannot send message");
-
-    // on click — pair/connect/disconnect
-    child_row.connect_activated(move |row| {
-        BTMAN_PROPS.lock().unwrap().current_index = row.index();
-        BTMAN_PROPS.lock().unwrap().address = row.get_bluer_address();
-
-        let address = row.get_bluer_address();
-        let adapter_name = BTMAN_PROPS.lock().unwrap().current_adapter.clone();
-        let sender_clone = sender.clone();
-
-        runtime().spawn(async move {
-            if let Err(err) =
-                device::set_device_active(address, sender_clone.clone(), adapter_name).await
-            {
-                let string = err.message;
-
-                sender_clone
-                    .send(Message::SwitchActiveSpinner(false, address))
-                    .await.expect("cannot send message");
-                sender_clone
-                    .send(Message::PopupError(string, adw::ToastPriority::High))
-                    .await.expect("cannot send message");
-            }
-        });
-    });
 
     Ok(child_row)
 }

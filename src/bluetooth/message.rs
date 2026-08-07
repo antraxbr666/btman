@@ -41,6 +41,6 @@ pub enum Message {
     InvalidateSort(),
     /// Forcefully refreshes the device list
     RefreshDevicesList(),
-    /// Updates the battery level of the currently selected device
-    UpdateBatteryLevel(i8),
+    /// Updates the battery level of the device at `bluer::Address` (level -1 = unsupported)
+    UpdateBattery(bluer::Address, i8),
 }

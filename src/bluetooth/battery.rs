@@ -38,6 +38,7 @@ fn handle_properties_updated(sender: Sender<Message>) {
     let conn = Connection::new_system().unwrap();
     let path = device_path().lock().unwrap().clone();
     let proxy = conn.with_proxy("org.bluez", &path, std::time::Duration::from_millis(5000));
+    let addr: bluer::Address = last_address().lock().unwrap().parse().unwrap_or_default();
     
     let reported = if let Ok(val) = proxy.percentage() {
         val as i8
@@ -45,7 +46,7 @@ fn handle_properties_updated(sender: Sender<Message>) {
     else {
         -1
     };
-    block_on(sender.send(Message::UpdateBatteryLevel(reported))).expect("cannot send message");
+    block_on(sender.send(Message::UpdateBattery(addr, reported))).expect("cannot send message");
 }
 
 /// Gets (and continues getting) the battery level of a device until it is canceled
@@ -84,7 +85,8 @@ pub fn get_battery_for_device(address: String, adapter: String, sender: Sender<M
         -1
     };
     
-    block_on(sender.send(Message::UpdateBatteryLevel(first_reported))).expect("cannot send message");
+    let addr: bluer::Address = address.parse().unwrap_or_default();
+    block_on(sender.send(Message::UpdateBattery(addr, first_reported))).expect("cannot send message");
     
     // get battery till canceled
     loop {

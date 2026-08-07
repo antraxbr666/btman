@@ -2,6 +2,7 @@ use async_channel::Sender;
 use bluer::{AdapterEvent, AdapterProperty, DeviceEvent, DeviceProperty};
 use futures::{pin_mut, stream::SelectAll, StreamExt};
 use std::sync::{Mutex, OnceLock};
+use std::str::FromStr;
 use tokio_util::sync::CancellationToken;
 
 use crate::{message::Message, bluetooth_state::devices_lut, agent::wait_for_dialog_exit, battery::cancel_battery_check};
@@ -181,7 +182,17 @@ pub async fn get_devices_continuous(sender: Sender<Message>, adapter_name: Strin
                                             let connected = added_device.is_connected().await.unwrap_or(false);
                                             sender.send(Message::AddPairedRow(name, addr, connected)).await.expect("cannot send message {}");
                                         } else {
-                                            sender.send(Message::AddRow(added_device)).await.expect("cannot send message {}");
+                                            let name = added_device
+                                                .alias()
+                                                .await
+                                                .unwrap_or_else(|_| "Unknown Device".to_string());
+                                            let is_unknown = bluer::Address::from_str(
+                                                name.clone().replace('-', ":").as_str(),
+                                            )
+                                            .is_ok();
+                                            if !is_unknown {
+                                                sender.send(Message::AddRow(added_device)).await.expect("cannot send message {}");
+                                            }
                                         }
                                     } else {
                                         sender.send(Message::AddRow(added_device)).await.expect("cannot send message {}");
@@ -249,6 +260,18 @@ pub async fn get_devices_continuous(sender: Sender<Message>, adapter_name: Strin
                     DeviceProperty::Rssi(rssi) => {
                         sender_clone.send(Message::SwitchRssi(addr, rssi as i32)).await.expect("cannot send message");
                         sender_clone.send(Message::InvalidateSort()).await.expect("cannot send message");
+                    },
+                    DeviceProperty::Paired(true) => {
+                        if let Ok(device) = adapter.device(addr) {
+                            let name = device
+                                .alias()
+                                .await
+                                .unwrap_or_else(|_| "Unknown Device".to_string());
+                            let connected = device.is_connected().await.unwrap_or(false);
+                            sender_clone.send(Message::AddPairedRow(name.clone(), addr, connected)).await.expect("cannot send message");
+                            sender_clone.send(Message::RemoveDevice(name, addr)).await.expect("cannot send message");
+                            sender_clone.send(Message::UpdateListBoxImage()).await.expect("cannot send message");
+                        }
                     },
                     event => {
                         println!("unhandled device event: {:?}", event);

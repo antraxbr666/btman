@@ -19,6 +19,8 @@ mod imp {
         pub name_label: RefCell<Option<gtk::Label>>,
         pub spinner: RefCell<Option<gtk::Spinner>>,
         pub connected: RefCell<bool>,
+        pub rssi: RefCell<i32>,
+        pub battery: RefCell<i32>,
         pub sender: RefCell<Option<Sender<Message>>>,
     }
 
@@ -75,9 +77,9 @@ impl PairedDeviceRow {
 
         obj.add_suffix(&button);
 
-        let forget_button = gtk::Button::from_icon_name("edit-delete-symbolic");
-        forget_button.add_css_class("flat");
-        forget_button.set_tooltip_text(Some("Forget device"));
+        let forget_label = gtk::Label::new(Some("Forget"));
+        let forget_button = gtk::Button::new();
+        forget_button.set_child(Some(&forget_label));
         obj.add_suffix(&forget_button);
 
         obj.set_activatable_widget(Some(&button));
@@ -89,6 +91,8 @@ impl PairedDeviceRow {
         *obj.imp().address.borrow_mut() = address;
         *obj.imp().sender.borrow_mut() = Some(sender);
         *obj.imp().connected.borrow_mut() = connected;
+        *obj.imp().rssi.borrow_mut() = 0;
+        *obj.imp().battery.borrow_mut() = -1;
 
         obj.connect_connect_button();
         obj.connect_forget_button();
@@ -100,7 +104,23 @@ impl PairedDeviceRow {
     }
 
     pub fn set_rssi(&self, rssi: i32) {
-        self.set_subtitle(&format!("Signal: {}%", rssi_to_percent(rssi)));
+        *self.imp().rssi.borrow_mut() = rssi;
+        self.update_subtitle();
+    }
+
+    pub fn set_battery(&self, level: i8) {
+        *self.imp().battery.borrow_mut() = level as i32;
+        self.update_subtitle();
+    }
+
+    fn update_subtitle(&self) {
+        let rssi = *self.imp().rssi.borrow();
+        let battery = *self.imp().battery.borrow();
+        let mut text = format!("Signal: {}%", rssi_to_percent(rssi));
+        if battery >= 0 {
+            text.push_str(&format!(" · Battery: {}%", battery));
+        }
+        self.set_subtitle(&text);
     }
 
     pub fn set_connected(&self, connected: bool) {
