@@ -36,7 +36,8 @@ use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::FromStr;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::runtime::Runtime;
 use lazy_static::lazy_static;
 
@@ -62,6 +63,8 @@ mod imp {
         pub battery_level_indicator: RefCell<Option<crate::battery_indicator::BatteryLevelIndicator>>,
         pub settings: OnceCell<Settings>,
         pub display_pass_key_dialog: RefCell<Option<adw::MessageDialog>>,
+        pub powered_sync_guard: Arc<AtomicBool>,
+        pub discoverable_sync_guard: Arc<AtomicBool>,
     }
 
     #[glib::object_subclass]
@@ -318,14 +321,20 @@ impl BtmanWindow {
                         listbox.invalidate_sort();
                     }
                     Message::SwitchAdapterPowered(powered) => {
-                        let powered_switch_row = clone.imp().powered_switch_row.borrow();
+                        let imp = clone.imp();
+                        imp.powered_sync_guard.store(true, Ordering::SeqCst);
+                        let powered_switch_row = imp.powered_switch_row.borrow();
                         let powered_switch_row = powered_switch_row.as_ref().unwrap();
                         powered_switch_row.set_active(powered);
+                        imp.powered_sync_guard.store(false, Ordering::SeqCst);
                     }
                     Message::SwitchAdapterDiscoverable(discoverable) => {
-                        let discoverable_switch_row = clone.imp().discoverable_switch_row.borrow();
+                        let imp = clone.imp();
+                        imp.discoverable_sync_guard.store(true, Ordering::SeqCst);
+                        let discoverable_switch_row = imp.discoverable_switch_row.borrow();
                         let discoverable_switch_row = discoverable_switch_row.as_ref().unwrap();
                         discoverable_switch_row.set_active(discoverable);
+                        imp.discoverable_sync_guard.store(false, Ordering::SeqCst);
                     }
                     Message::PopupError(string, priority) => {
                         let toast_overlay = clone.imp().toast_overlay.borrow();
@@ -837,7 +846,11 @@ impl BtmanWindow {
         let powered_switch_row = self.imp().powered_switch_row.borrow();
         let powered_switch_row = powered_switch_row.as_ref().unwrap();
         let sender5 = sender.clone();
-        powered_switch_row.connect_activated(move |_| {
+        let powered_guard = self.imp().powered_sync_guard.clone();
+        powered_switch_row.connect_notify(Some("active"), move |_, _| {
+            if powered_guard.load(Ordering::SeqCst) {
+                return;
+            }
             let sender_clone = sender5.clone();
             let adapter_name = BTMAN_PROPS.lock().unwrap().current_adapter.clone();
 
@@ -870,7 +883,11 @@ impl BtmanWindow {
         let discoverable_switch_row = self.imp().discoverable_switch_row.borrow();
         let discoverable_switch_row = discoverable_switch_row.as_ref().unwrap();
         let sender6 = sender.clone();
-        discoverable_switch_row.connect_activated(move |_| {
+        let discoverable_guard = self.imp().discoverable_sync_guard.clone();
+        discoverable_switch_row.connect_notify(Some("active"), move |_, _| {
+            if discoverable_guard.load(Ordering::SeqCst) {
+                return;
+            }
             let sender_clone = sender6.clone();
             let adapter_name = BTMAN_PROPS.lock().unwrap().current_adapter.clone();
 
@@ -953,6 +970,13 @@ impl BtmanWindow {
         let adapter = session.adapter(BTMAN_PROPS.lock().unwrap().current_adapter.clone().as_str())?;
         let alias = adapter.alias().await?;
         println!("startup alias is: {}\n", alias);
+
+        if let Ok(powered) = adapter.is_powered().await {
+            sender.send(Message::SwitchAdapterPowered(powered)).await.expect("cannot send message");
+        }
+        if let Ok(discoverable) = adapter.is_discoverable().await {
+            sender.send(Message::SwitchAdapterDiscoverable(discoverable)).await.expect("cannot send message");
+        }
 
         lut.insert(alias.to_string(), BTMAN_PROPS.lock().unwrap().current_adapter.to_string());
         *adapters_lut().lock().unwrap() = Some(lut);
