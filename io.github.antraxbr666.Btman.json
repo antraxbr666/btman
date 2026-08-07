@@ -1,12 +1,12 @@
 {
-    "app-id" : "io.github.antraxbr666.Overskride",
+    "app-id" : "io.github.antraxbr666.Btman",
     "runtime" : "org.gnome.Platform",
     "runtime-version" : "49",
     "sdk" : "org.gnome.Sdk",
     "sdk-extensions" : [
         "org.freedesktop.Sdk.Extension.rust-stable"
     ],
-    "command" : "overskride",
+    "command" : "btman",
     "finish-args" : [
         "--share=ipc",
         "--socket=fallback-x11",
@@ -25,7 +25,7 @@
         ],
         "env" : {
             "RUST_BACKTRACE" : "1",
-            "RUST_LOG" : "overskride=debug"
+            "RUST_LOG" : "btman=debug"
         }
     },
     "cleanup" : [
@@ -53,16 +53,16 @@
           ]
         },
         {
-            "name" : "overskride",
+            "name" : "btman",
             "builddir" : true,
-            "buildsystem" : "meson",
-            "config-opts": [
-              "-Dbuildtype=release"
+            "buildsystem" : "simple",
+            "build-commands" : [
+                "./build.sh --release"
             ],
             "sources" : [
                 {
                     "type" : "git",
-					"url" : "https://github.com/antraxbr666/overskride.git",
+                    "url" : "https://github.com/antraxbr666/btman.git",
                     "branch" : "main"
                 }
             ]

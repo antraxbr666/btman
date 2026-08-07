@@ -9,7 +9,6 @@ adw = { version = "0.8.0", package = "libadwaita", features = ["v1_4"] }
 bluer = { version = "0.17.4", features = ["bluetoothd"] }
 dbus = "0.9.9"
 futures = { version = "0.3.31", features = ["futures-executor"] }
-gettext-rs = { version = "0.7.7", features = ["gettext-system"] }
 gtk = { version = "0.10.2", package = "gtk4", features = ["blueprint"] }
 tokio = { version = "1.48.0", features = ["full"] }
 tokio-util = "0.7.17"

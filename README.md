@@ -6,15 +6,15 @@ Originally forked from [overskride](https://github.com/kaii-lb/overskride), then
 
 ## 📦 Prerequisites for building
 - gtk4 and libadwaita (development packages)
+- blueprint-compiler
 - rust & cargo
 - bluez (installed by default on all distros)
 
 ## 🔨 Compiling
 ```bash
-git clone https://github.com/antraxbr666/overskride && cd overskride
-meson setup build && cd build
-meson compile
-./src/btman
+git clone https://github.com/antraxbr666/btman && cd btman
+./build.sh
+./run.sh
 ```
 
 ## ✨ Features

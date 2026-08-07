@@ -35,34 +35,23 @@ mod singletons;
 use self::application::BtmanApplication;
 use self::window::BtmanWindow;
 
-use config::{GETTEXT_PACKAGE, LOCALEDIR, PKGDATADIR};
-use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
 use gtk::{gio, glib};
 use gtk::prelude::*;
 use gtk::gdk::Display;
 
 fn main() -> glib::ExitCode {
-    bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR).expect("Unable to bind the text domain");
-    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8")
-        .expect("Unable to set the text domain encoding");
-    textdomain(GETTEXT_PACKAGE).expect("Unable to switch to the text domain");
-
-    let resources = match std::env::var("MESON_DEVENV") {
-    Err(_) => gio::Resource::load(PKGDATADIR.to_owned() + "/btman.gresource")
-        .expect("Unable to find btman.gresource"),
-    Ok(_) => match std::env::current_exe() {
+    let resources = match std::env::current_exe() {
         Ok(path) => {
             let mut resource_path = path;
             resource_path.pop();
             resource_path.push("btman.gresource");
             gio::Resource::load(&resource_path)
-                .expect("Unable to find btman.gresource in devenv")
-            }
-            Err(err) => {
-                eprintln!("Unable to find the current path: {}", err);
-                return 1.into();
-            }
-        },
+                .expect("Unable to find btman.gresource")
+        }
+        Err(err) => {
+            eprintln!("Unable to find the current path: {}", err);
+            return 1.into();
+        }
     };
 
     gio::resources_register(&resources);
