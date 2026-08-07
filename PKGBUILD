@@ -2,15 +2,16 @@
 # Based on the original overskride PKGBUILD from kaii
 
 pkgname=btman
-pkgver=0.6.45
+pkgver=0.6.46
 pkgrel=1
 pkgdesc="A minimal GTK4/libadwaita Bluetooth pairing manager for Wayland"
 arch=('x86_64')
 url="https://github.com/antraxbr666/btman"
 license=('GPL3')
 depends=('gtk4' 'libadwaita' 'dbus' 'bluez' 'glib2')
-makedepends=('rust' 'cargo' 'pkg-config' 'gcc' 'glib2')
+makedepends=('rust' 'cargo' 'pkg-config' 'gcc' 'glib2' 'gtk3')
 source=("btman::git+ssh://git@github.com/antraxbr666/btman.git#tag=v${pkgver}")
+install='btman.install'
 sha256sums=('SKIP')
 
 build() {
@@ -35,6 +36,8 @@ package() {
     "$pkgdir/usr/share/icons/hicolor/scalable/apps/"
   install -Dm644 data/icons/hicolor/symbolic/apps/*.svg \
     "$pkgdir/usr/share/icons/hicolor/symbolic/apps/"
+
+  gtk-update-icon-cache -q -f -t "$pkgdir/usr/share/icons/hicolor"
 
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
