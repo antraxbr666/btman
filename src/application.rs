@@ -106,8 +106,8 @@ impl BtmanApplication {
             .developers(vec!["antraX <antraxbr666@proton.me>", "kaii (original overskride author)"])
             .copyright("© 2023-present")
             .license_type(gtk::License::Gpl30)
-            .issue_url("https://github.com/antraxbr666/overskride/issues")
-            .website("https://github.com/antraxbr666/overskride")
+            .issue_url("https://github.com/antraxbr666/btman/issues")
+            .website("https://github.com/antraxbr666/btman")
             .comments("A minimal GTK4/libadwaita Bluetooth pairing manager for Wayland.\nOriginally forked from overskride (https://github.com/kaii-lb/overskride),\nthen scoped down to device pairing/management only.")
             .build();
 
