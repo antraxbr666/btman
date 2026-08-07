@@ -63,7 +63,7 @@ dependencies = [
 
 [[package]]
 name = "btman"
-version = "0.6.36"
+version = "0.6.37"
 dependencies = [
  "async-channel",
  "bluer",

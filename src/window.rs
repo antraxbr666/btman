@@ -158,6 +158,7 @@ mod imp {
             // Device list
             let scrolled = gtk::ScrolledWindow::builder()
                 .propagate_natural_height(true)
+                .max_content_height(300)
                 .kinetic_scrolling(true)
                 .overlay_scrolling(true)
                 .build();
@@ -211,6 +212,7 @@ mod imp {
             // Paired device list
             let paired_scrolled = gtk::ScrolledWindow::builder()
                 .propagate_natural_height(true)
+                .max_content_height(300)
                 .kinetic_scrolling(true)
                 .overlay_scrolling(true)
                 .build();
