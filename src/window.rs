@@ -736,15 +736,21 @@ impl BtmanWindow {
                 sender_clone,
                 async move {
                     if let Err(err) =
-                        bluetooth_settings::set_adapter_powered(adapter_name, sender_clone.clone()).await
+                        bluetooth_settings::set_adapter_powered(adapter_name.clone(), sender_clone.clone()).await
                     {
                         let string = err.message;
                         sender_clone
                             .send(Message::PopupError(string, adw::ToastPriority::High))
                             .await.expect("cannot send message");
-                        sender_clone
-                            .send(Message::SwitchAdapterPowered(false))
-                            .await.expect("cannot send message");
+                        if let Ok(session) = bluer::Session::new().await {
+                            if let Ok(adapter) = session.adapter(&adapter_name) {
+                                if let Ok(powered) = adapter.is_powered().await {
+                                    sender_clone
+                                        .send(Message::SwitchAdapterPowered(powered))
+                                        .await.expect("cannot send message");
+                                }
+                            }
+                        }
                     }
                 }
             ));
