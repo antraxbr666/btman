@@ -1,6 +1,6 @@
 [package]
 name = "btman"
-version = "0.6.35"
+version = "0.6.36"
 edition = "2021"
 authors = ["antraX <antraxbr666@proton.me>", "kaii_lb <imkaiilb@gmail.com> (original author)"]
 

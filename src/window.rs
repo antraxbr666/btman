@@ -614,7 +614,7 @@ impl BtmanWindow {
                     Message::RequestPinCode(request) => {
                         let device: String;
                         let adapter: String;
-                        device = devices_lut().lock().unwrap().as_ref().unwrap().get(&request.device).unwrap_or(&"Unknown Device".to_string()).to_string();
+                        device = devices_lut().lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&request.device).cloned()).unwrap_or_else(|| "Unknown Device".to_string());
                         adapter = adapters_lut().lock().unwrap().as_ref().unwrap().get(&request.adapter).unwrap_or(&"Unknown Adapter".to_string()).to_string();
                         BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
 
@@ -663,7 +663,7 @@ impl BtmanWindow {
                     Message::DisplayPinCode(request) => {
                         let pin_code = &request.pincode;
                         let device: String;
-                        device = devices_lut().lock().unwrap().as_ref().unwrap().get(&request.device).unwrap_or(&"Unknown Device".to_string()).to_string();
+                        device = devices_lut().lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&request.device).cloned()).unwrap_or_else(|| "Unknown Device".to_string());
                         BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
 
                         let body = "Please enter this pin code on ".to_string() + device.as_str();
@@ -683,7 +683,7 @@ impl BtmanWindow {
                     Message::RequestPassKey(request) => {
                         let device: String;
                         let adapter: String;
-                        device = devices_lut().lock().unwrap().as_ref().unwrap().get(&request.device).unwrap_or(&"Unknown Device".to_string()).to_string();
+                        device = devices_lut().lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&request.device).cloned()).unwrap_or_else(|| "Unknown Device".to_string());
                         adapter = adapters_lut().lock().unwrap().as_ref().unwrap().get(&request.adapter).unwrap_or(&"Unknown Adapter".to_string()).to_string();
                         BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
 
@@ -736,7 +736,7 @@ impl BtmanWindow {
                     Message::DisplayPassKey(request) => {
                         let pin_code = &request.passkey;
                         let device: String;
-                        device = devices_lut().lock().unwrap().as_ref().unwrap().get(&request.device).unwrap_or(&"Unknown Device".to_string()).to_string();
+                        device = devices_lut().lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&request.device).cloned()).unwrap_or_else(|| "Unknown Device".to_string());
                         BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
 
                         if clone.imp().display_pass_key_dialog.borrow().clone().is_some() {
@@ -764,7 +764,7 @@ impl BtmanWindow {
                         let adapter: String;
                         let passkey = &request.passkey.to_string();
                         BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
-                        device = devices_lut().lock().unwrap().as_ref().unwrap().get(&request.device).unwrap_or(&"Unknown Device".to_string()).to_string();
+                        device = devices_lut().lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&request.device).cloned()).unwrap_or_else(|| "Unknown Device".to_string());
                         let mut holder = String::new();
                         for key in adapters_lut().lock().unwrap().as_ref().unwrap().keys() {
                             if let Some(pair) = adapters_lut().lock().unwrap().as_ref().unwrap().get_key_value(key) {
@@ -817,7 +817,7 @@ impl BtmanWindow {
                     Message::RequestAuthorization(request) => {
                         let device: String;
                         let adapter: String;
-                        device = devices_lut().lock().unwrap().as_ref().unwrap().get(&request.device).unwrap_or(&"Unknown Device".to_string()).to_string();
+                        device = devices_lut().lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&request.device).cloned()).unwrap_or_else(|| "Unknown Device".to_string());
                         adapter = adapters_lut().lock().unwrap().as_ref().unwrap().get(&request.adapter).unwrap_or(&"Unknown Adapter".to_string()).to_string();
                         BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
 
@@ -853,7 +853,7 @@ impl BtmanWindow {
                         let device: String;
                         let adapter: String;
                         BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
-                        device = devices_lut().lock().unwrap().as_ref().unwrap().get(&request.device).unwrap_or(&"Unknown Device".to_string()).to_string();
+                        device = devices_lut().lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&request.device).cloned()).unwrap_or_else(|| "Unknown Device".to_string());
                         adapter = adapters_lut().lock().unwrap().as_ref().unwrap().iter()
                             .find_map(|(key, val)| if val == &request.adapter { Some(key) } else { None })
                             .unwrap_or(&"Unknown Adapter".to_string()).to_string();
@@ -1195,9 +1195,8 @@ async fn add_child_row(device: bluer::Device) -> bluer::Result<DeviceActionRow> 
     }
 
     {
-        let mut lut = devices_lut().lock().unwrap().take().unwrap();
-        lut.insert(address, name.clone());
-        *devices_lut().lock().unwrap() = Some(lut);
+        let mut guard = devices_lut().lock().unwrap_or_else(|p| p.into_inner());
+        guard.get_or_insert_with(::std::collections::HashMap::new).insert(address, name.clone());
     }
 
     device_sender

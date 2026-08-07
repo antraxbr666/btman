@@ -82,7 +82,7 @@ pub async fn remove_device(address: bluer::Address, sender: Sender<Message>, ada
 
     BTMAN_PROPS.lock().unwrap().displaying_dialog = true;
 
-    sender.send(Message::RequestYesNo(title, subtitle, confirm, adw::ResponseAppearance::Destructive)).await.expect("can't send message");
+    sender.send(Message::RequestYesNo(title, subtitle, confirm, adw::ResponseAppearance::Suggested)).await.expect("can't send message");
 
     wait_for_dialog_exit().await;
 
@@ -96,10 +96,9 @@ pub async fn remove_device(address: bluer::Address, sender: Sender<Message>, ada
         }
         adapter.remove_device(address).await?;
         {
-            let mut lut = devices_lut().lock().unwrap().take().unwrap();
-            if lut.contains_key(&address) {
+            let mut guard = devices_lut().lock().unwrap_or_else(|p| p.into_inner());
+            if let Some(lut) = guard.as_mut() {
                 lut.remove(&address);
-                *devices_lut().lock().unwrap() = Some(lut);
             }
         }
 
@@ -169,7 +168,7 @@ pub async fn get_devices_continuous(sender: Sender<Message>, adapter_name: Strin
                         if adapter.is_powered().await? {
                             let supposed_device = adapter.device(addr);
 
-                            let devices_lut = devices_lut().lock().unwrap().as_ref().unwrap().clone();
+                            let devices_lut = devices_lut().lock().unwrap_or_else(|p| p.into_inner()).as_ref().cloned().unwrap_or_default();
 
                             if !devices_lut.contains_key(&addr) {
                                 if let Ok(added_device) = supposed_device {
@@ -214,17 +213,9 @@ pub async fn get_devices_continuous(sender: Sender<Message>, adapter_name: Strin
                     }
                     AdapterEvent::DeviceRemoved(addr) => {
                         if adapter.is_powered().await? {
-                            let mut lut = devices_lut().lock().unwrap().take().unwrap();
-
-                            let device_name = if lut.contains_key(&addr) {
-                                let name = lut.get(&addr).unwrap().clone();
-                                lut.remove(&addr);
-                                *devices_lut().lock().unwrap() = Some(lut);
-
-                                name
-                            }
-                            else {
-                                String::new()
+                            let device_name = {
+let mut guard = devices_lut().lock().unwrap_or_else(|p| p.into_inner());
+                                guard.as_mut().and_then(|lut| lut.remove(&addr)).unwrap_or_default()
                             };
 
                             sender_clone.send(Message::RemoveDevice(device_name.clone(), addr)).await.expect("cannot send message");
