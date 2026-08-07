@@ -38,11 +38,17 @@ pub async fn set_device_active(address: bluer::Address, sender: Sender<Message>,
             device.pair().await.map_err(|e| step_err("pair", e))?;
             tokio::time::sleep(std::time::Duration::from_millis(200)).await;
             device.connect().await.map_err(|e| step_err("connect-1", e))?;
-            device.connect().await.map_err(|e| step_err("connect-2", e))?;
+            if !device.is_connected().await? {
+                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                device.connect().await.map_err(|e| step_err("connect-2", e))?;
+            }
         } else {
             eprintln!("[set_device_active] connecting to already-paired device");
             device.connect().await.map_err(|e| step_err("connect-1", e))?;
-            device.connect().await.map_err(|e| step_err("connect-2", e))?;
+            if !device.is_connected().await? {
+                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                device.connect().await.map_err(|e| step_err("connect-2", e))?;
+            }
         }
         device.is_connected().await
     }
