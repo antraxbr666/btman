@@ -5,11 +5,13 @@ pub enum Message {
     /// Changes the connected switch's spinner spinning state to `bool`
     SwitchActiveSpinner(bool),
     /// Changes the supplied device's RSSI to the supplied value
-    SwitchRssi(String, i32),
+    SwitchRssi(bluer::Address, i32),
     /// Removes the device matching the supplied name
     RemoveDevice(String, bluer::Address),
     /// Adds a new device from the properties of [device](bluer::Device)
     AddRow(bluer::Device),
+    /// Adds a new paired device from the properties of [device](bluer::Device)
+    AddPairedRow(bluer::Device),
     /// Changes the adapter's powered state to `bool`
     SwitchAdapterPowered(bool),
     /// Changes the adapter's discoverable state to `bool`

@@ -28,6 +28,7 @@ mod bluetooth_state;
 #[path = "bluetooth/agent.rs"] mod agent;
 #[path = "bluetooth/battery.rs"] mod battery;
 #[path = "widgets/device_action_row.rs"] mod device_action_row;
+#[path = "widgets/paired_device_row.rs"] mod paired_device_row;
 #[path = "widgets/startup_error_message.rs"] mod startup_error_message;
 #[path = "widgets/battery_indicator.rs"] mod battery_indicator;
 mod singletons;

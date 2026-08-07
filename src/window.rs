@@ -26,6 +26,7 @@ use gtk::{gio, glib};
 use crate::agent::register_bluetooth_agent;
 use crate::application::BtmanApplication;
 use crate::device_action_row::DeviceActionRow;
+use crate::paired_device_row::PairedDeviceRow;
 use crate::message::Message;
 use crate::startup_error_message::StartupErrorMessage;
 use crate::{bluetooth_settings, device};
@@ -53,10 +54,12 @@ mod imp {
     #[derive(Debug, Default)]
     pub struct BtmanWindow {
         pub main_listbox: RefCell<Option<gtk::ListBox>>,
+        pub paired_listbox: RefCell<Option<gtk::ListBox>>,
         pub powered_switch_row: RefCell<Option<adw::SwitchRow>>,
         pub discoverable_switch_row: RefCell<Option<adw::SwitchRow>>,
         pub toast_overlay: RefCell<Option<adw::ToastOverlay>>,
         pub listbox_image_box: RefCell<Option<gtk::Box>>,
+        pub paired_image_box: RefCell<Option<gtk::Box>>,
         pub window_title: RefCell<Option<adw::WindowTitle>>,
         pub bluetooth_group: RefCell<Option<adw::PreferencesGroup>>,
 
@@ -177,6 +180,61 @@ mod imp {
 
             main_box.append(&devices_group);
 
+            // Paired Devices group
+            let paired_group = adw::PreferencesGroup::builder()
+                .title("Paired Devices")
+                .description("Devices paired to this computer")
+                .build();
+
+            // Empty state image
+            let paired_image_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+            paired_image_box.set_visible(true);
+            paired_image_box.set_vexpand(true);
+            paired_image_box.set_valign(gtk::Align::Center);
+            paired_image_box.set_halign(gtk::Align::Center);
+
+            let paired_empty_box = gtk::Box::new(gtk::Orientation::Vertical, 12);
+            paired_empty_box.set_valign(gtk::Align::Center);
+            paired_empty_box.set_halign(gtk::Align::Center);
+
+            let paired_empty_icon = gtk::Image::from_icon_name("network-wireless-symbolic");
+            paired_empty_icon.set_pixel_size(48);
+            paired_empty_icon.set_opacity(0.35);
+            paired_empty_box.append(&paired_empty_icon);
+
+            let paired_empty_label = gtk::Label::new(Some("No paired devices"));
+            paired_empty_label.set_opacity(0.4);
+            paired_empty_label.set_wrap(true);
+            paired_empty_label.set_justify(gtk::Justification::Center);
+            paired_empty_box.append(&paired_empty_label);
+
+            paired_image_box.append(&paired_empty_box);
+            paired_group.add(&paired_image_box);
+
+            // Paired device list
+            let paired_scrolled = gtk::ScrolledWindow::builder()
+                .propagate_natural_height(true)
+                .kinetic_scrolling(true)
+                .overlay_scrolling(true)
+                .build();
+            paired_scrolled.add_css_class("flat");
+
+            let paired_listbox = gtk::ListBox::builder()
+                .margin_top(6)
+                .margin_bottom(6)
+                .margin_start(6)
+                .margin_end(6)
+                .valign(gtk::Align::Fill)
+                .visible(false)
+                .build();
+            paired_listbox.add_css_class("boxed-list");
+            paired_listbox.add_css_class("separators");
+
+            paired_scrolled.set_child(Some(&paired_listbox));
+            paired_group.add(&paired_scrolled);
+
+            main_box.append(&paired_group);
+
             toolbar_view.set_content(Some(&main_box));
             toast_overlay.set_child(Some(&toolbar_view));
 
@@ -184,10 +242,12 @@ mod imp {
 
             // Store references
             *self.main_listbox.borrow_mut() = Some(main_listbox);
+            *self.paired_listbox.borrow_mut() = Some(paired_listbox);
             *self.powered_switch_row.borrow_mut() = Some(powered_switch_row);
             *self.discoverable_switch_row.borrow_mut() = Some(discoverable_switch_row);
             *self.toast_overlay.borrow_mut() = Some(toast_overlay);
             *self.listbox_image_box.borrow_mut() = Some(listbox_image_box);
+            *self.paired_image_box.borrow_mut() = Some(paired_image_box);
             *self.window_title.borrow_mut() = Some(window_title);
             *self.bluetooth_group.borrow_mut() = Some(bluetooth_group);
 
@@ -277,23 +337,35 @@ impl BtmanWindow {
                 match msg {
                     Message::SwitchActive(_active, address, is_current) => {
                         let _ = is_current;
-                        let listbox = clone.imp().main_listbox.borrow();
-                        let listbox = listbox.as_ref().unwrap();
-                        let mut listbox_index = 0;
 
-                        while let Some(row) = listbox.row_at_index(listbox_index) {
-                            let action_row = row.downcast::<DeviceActionRow>().expect("cannot downcast to action row.");
+                        let paired_listbox = clone.imp().paired_listbox.borrow();
+                        let paired_listbox = paired_listbox.as_ref().unwrap();
+                        let mut paired_index = 0;
+                        while let Some(row) = paired_listbox.row_at_index(paired_index) {
+                            let action_row = row
+                                .downcast::<PairedDeviceRow>()
+                                .expect("cannot downcast to paired row.");
                             if action_row.get_bluer_address() == address {
-                                // just update row state if needed
-                            } else if address == bluer::Address::any() {
-                                // clear all
+                                action_row.set_connected(_active);
                             }
-
-                            listbox_index += 1;
+                            paired_index += 1;
                         }
                     }
                     Message::SwitchActiveSpinner(_spinning) => {}
-                    Message::SwitchRssi(_device_name, _rssi) => {}
+                    Message::SwitchRssi(address, rssi) => {
+                        let paired_listbox = clone.imp().paired_listbox.borrow();
+                        let paired_listbox = paired_listbox.as_ref().unwrap();
+                        let mut paired_index = 0;
+                        while let Some(row) = paired_listbox.row_at_index(paired_index) {
+                            let action_row = row
+                                .downcast::<PairedDeviceRow>()
+                                .expect("cannot downcast to paired row.");
+                            if action_row.get_bluer_address() == address {
+                                action_row.set_rssi(rssi);
+                            }
+                            paired_index += 1;
+                        }
+                    }
                     Message::AddRow(device) => {
                         let row = add_child_row(device);
 
@@ -302,6 +374,30 @@ impl BtmanWindow {
                             let main_listbox = main_listbox.as_ref().unwrap();
                             main_listbox.append(&ok_row);
                             main_listbox.invalidate_sort();
+                        }
+                    }
+                    Message::AddPairedRow(device) => {
+                        let paired_listbox = clone.imp().paired_listbox.borrow();
+                        let paired_listbox = paired_listbox.as_ref().unwrap();
+
+                        let address = device.address();
+                        let mut exists = false;
+                        let mut index = 0;
+                        while let Some(row) = paired_listbox.row_at_index(index) {
+                            let action_row = row
+                                .downcast::<PairedDeviceRow>()
+                                .expect("cannot downcast to paired row.");
+                            if action_row.get_bluer_address() == address {
+                                exists = true;
+                                break;
+                            }
+                            index += 1;
+                        }
+
+                        if !exists {
+                            if let Ok(ok_row) = add_paired_row(device) {
+                                paired_listbox.append(&ok_row);
+                            }
                         }
                     }
                     Message::RemoveDevice(name, address) => {
@@ -327,6 +423,23 @@ impl BtmanWindow {
                         let powered_switch_row = powered_switch_row.as_ref().unwrap();
                         powered_switch_row.set_active(powered);
                         imp.powered_sync_guard.store(false, Ordering::SeqCst);
+
+                        if !powered {
+                            clear_device_lists(&clone);
+
+                            *devices_lut().lock().unwrap() = Some(HashMap::new());
+                        } else {
+                            let sender =
+                                BTMAN_PROPS.lock().unwrap().sender.clone().unwrap();
+                            let adapter_name = BTMAN_PROPS
+                                .lock()
+                                .unwrap()
+                                .current_adapter
+                                .clone();
+                            runtime().spawn(async move {
+                                let _ = device::get_paired_devices(sender, adapter_name).await;
+                            });
+                        }
                     }
                     Message::SwitchAdapterDiscoverable(discoverable) => {
                         let imp = clone.imp();
@@ -983,10 +1096,13 @@ impl BtmanWindow {
 
         let clone = sender.clone();
         std::thread::spawn(move || {
-            register_bluetooth_agent(sender.clone()).expect("cannot register bluetooth agent");
+            register_bluetooth_agent(clone.clone()).expect("cannot register bluetooth agent");
         });
 
-        let _ = clone;
+        let adapter_name = BTMAN_PROPS.lock().unwrap().current_adapter.clone();
+        if let Err(err) = device::get_paired_devices(sender.clone(), adapter_name).await {
+            println!("error loading paired devices: {err}");
+        }
 
         Ok(())
     }
@@ -1046,4 +1162,48 @@ async fn add_child_row(device: bluer::Device) -> bluer::Result<DeviceActionRow> 
     });
 
     Ok(child_row)
+}
+
+/// Creates a new PairedDeviceRow from a device
+#[tokio::main]
+async fn add_paired_row(device: bluer::Device) -> bluer::Result<PairedDeviceRow> {
+    let mut name = device.alias().await?;
+    let address = device.address();
+
+    if let Ok(_bad_title) = bluer::Address::from_str(name.clone().replace('-', ":").as_str()) {
+        name = "Unknown Device".to_string();
+    }
+
+    let sender = BTMAN_PROPS.lock().unwrap().sender.clone().unwrap();
+
+    let row = PairedDeviceRow::new(&name, address, sender);
+    Ok(row)
+}
+
+/// Removes every device from the in-range and paired listboxes and restores
+/// their empty states.
+fn clear_device_lists(win: &BtmanWindow) {
+    let imp = win.imp();
+
+    let main_listbox = imp.main_listbox.borrow();
+    let main_listbox = main_listbox.as_ref().unwrap();
+    while let Some(row) = main_listbox.row_at_index(0) {
+        main_listbox.remove(&row);
+    }
+
+    let paired_listbox = imp.paired_listbox.borrow();
+    let paired_listbox = paired_listbox.as_ref().unwrap();
+    while let Some(row) = paired_listbox.row_at_index(0) {
+        paired_listbox.remove(&row);
+    }
+
+    let listbox_image_box = imp.listbox_image_box.borrow();
+    let listbox_image_box = listbox_image_box.as_ref().unwrap();
+    listbox_image_box.set_visible(true);
+    main_listbox.set_visible(false);
+
+    let paired_image_box = imp.paired_image_box.borrow();
+    let paired_image_box = paired_image_box.as_ref().unwrap();
+    paired_image_box.set_visible(true);
+    paired_listbox.set_visible(false);
 }

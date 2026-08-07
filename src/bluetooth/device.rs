@@ -94,6 +94,26 @@ pub async fn stop_searching() {
     }
 }
 
+/// Enumerates all paired devices known to the adapter and sends `AddPairedRow`
+/// for each one. Used to populate the "Paired Devices" list on startup and
+/// whenever the adapter is powered back on.
+pub async fn get_paired_devices(sender: Sender<Message>, adapter_name: String) -> bluer::Result<()> {
+    let session = bluer::Session::new().await?;
+    let adapter = session.adapter(adapter_name.as_str())?;
+
+    let addresses = adapter.device_addresses().await?;
+
+    for addr in addresses {
+        if let Ok(device) = adapter.device(addr) {
+            if let Ok(true) = device.is_paired().await {
+                sender.send(Message::AddPairedRow(device)).await.expect("cannot send message");
+            }
+        }
+    }
+
+    Ok(())
+}
+
 pub async fn get_devices_continuous(sender: Sender<Message>, adapter_name: String) -> bluer::Result<()> {
     let session = bluer::Session::new().await?;
     let adapter = &session.adapter(adapter_name.as_str())?;
@@ -126,7 +146,15 @@ pub async fn get_devices_continuous(sender: Sender<Message>, adapter_name: Strin
 
                             if !devices_lut.contains_key(&addr) {
                                 if let Ok(added_device) = supposed_device {
-                                    sender.send(Message::AddRow(added_device)).await.expect("cannot send message {}");
+                                    if let Ok(paired) = added_device.is_paired().await {
+                                        if paired {
+                                            sender.send(Message::AddPairedRow(added_device)).await.expect("cannot send message {}");
+                                        } else {
+                                            sender.send(Message::AddRow(added_device)).await.expect("cannot send message {}");
+                                        }
+                                    } else {
+                                        sender.send(Message::AddRow(added_device)).await.expect("cannot send message {}");
+                                    }
                                     sender.send(Message::UpdateListBoxImage()).await.expect("cannot send message {}");
 
                                     let device = adapter.device(addr)?;
@@ -185,14 +213,10 @@ pub async fn get_devices_continuous(sender: Sender<Message>, adapter_name: Strin
                         sender_clone.send(Message::SwitchActive(connected, addr, addr == current_address)).await.expect("cannot send message");
                     },
                     DeviceProperty::Alias(_name) => {
-                        let hashmap = devices_lut().lock().unwrap().as_ref().unwrap().clone();
-                        let empty = String::new();
-                        let old_alias = hashmap.get(&addr).unwrap_or(&empty);
-                        sender_clone.send(Message::SwitchRssi(old_alias.to_string(), 0)).await.ok();
+                        sender_clone.send(Message::SwitchRssi(addr, 0)).await.ok();
                     },
                     DeviceProperty::Rssi(rssi) => {
-                        let device = devices_lut().lock().unwrap().as_ref().unwrap().get(&addr).unwrap_or(&"Unknown Device".to_string()).to_string();
-                        sender_clone.send(Message::SwitchRssi(device, rssi as i32)).await.expect("cannot send message");
+                        sender_clone.send(Message::SwitchRssi(addr, rssi as i32)).await.expect("cannot send message");
                         sender_clone.send(Message::InvalidateSort()).await.expect("cannot send message");
                     },
                     event => {
